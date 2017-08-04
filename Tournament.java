@@ -1,5 +1,5 @@
 import java.io.FileOutputStream;
-import java.io.PrintStream;
+//import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -22,7 +22,7 @@ public class Tournament
   static final String PASS = "**********";
   private Connection conn = null;
   private Statement stmt = null;
-  private Statement stmt2 = null;
+  //private Statement stmt2 = null;
   private List<String> games;
   private List<String> players;
   Map<String, Integer> numberedPlayers;
@@ -30,7 +30,7 @@ public class Tournament
 
   public static void main(String[] args)
   {
-    Tournament t = new Tournament(args.length == 0 ? "jdbc:mysql://192.168.1.11/test" : args[0]);
+    Tournament t = new Tournament(args.length == 0 ? "jdbc:mysql://192.168.1.2/test" : args[0]);
 
     t.startDatabaseConnection();
     if (t.tournamentBegun())
@@ -43,6 +43,7 @@ public class Tournament
 
 		t.games = new ArrayList<String>()
 		{
+			public static final long serialVersionUID = 0;
 			public String toString()
 			{
 				StringBuilder returnValue = new StringBuilder("[");
@@ -58,6 +59,15 @@ public class Tournament
 				return ("" + returnValue + "]");
 			}
 		};
+
+
+		try
+		{
+			@SuppressWarnings("unchecked")
+			List<String> players = (List<String>)t.games.getClass().newInstance();
+			t.players = players;
+			}
+		catch (Exception e) {	System.exit(0);	}
 
     try
     {
@@ -136,30 +146,30 @@ public class Tournament
           System.exit(1);
         }
       }
-      Object localObject;
-      Prompter localPrompter3;
+
+      Prompter p3;
       if (j == 2)
       {
         k = 0;
         while (k == 0)
         {
-          localObject = "";
-          Iterator localIterator1 = t.players.iterator();
+          String option = "";
+          Iterator<String> localIterator1 = t.players.iterator();
           while (localIterator1.hasNext()) {
-            localObject = (String)localObject + "|" + (String)localIterator1.next();
+            option = option + "|" + localIterator1.next();
           }
           System.out.println(t.players);
           System.out.print("enter next player: ");
-          for (localPrompter3 = CommandLinePrompter.prompt("enter next player", (String)localObject); !localPrompter3.isDone();) {}
+          for (p3 = CommandLinePrompter.prompt("enter next player", options); !p3.isDone();) {}
           try
           {
-            str = localPrompter3.get();
+            str = p3.get();
           }
-          catch (InterruptedException localInterruptedException4)
+          catch (InterruptedException e)
           {
             str = "";
           }
-          catch (ExecutionException localExecutionException4)
+          catch (ExecutionException e)
           {
             str = "";
           }
@@ -178,17 +188,17 @@ public class Tournament
           System.out.println(t.games);
           System.out.print("enter next game: ");
 
-          localObject = CommandLinePrompter.prompt("enter next game", "|[A-Za-z0-9/&* ]{4,20}");
-          while (!((Prompter)localObject).isDone()) {}
+          p3 = CommandLinePrompter.prompt("enter next game", "|[A-Za-z0-9/&* ]{4,20}");
+          while (! p3.isDone()) {}
           try
           {
-            str = ((Prompter)localObject).get();
+            str = p3.get();
           }
-          catch (InterruptedException localInterruptedException3)
+          catch (InterruptedException e)
           {
             str = "";
           }
-          catch (ExecutionException localExecutionException3)
+          catch (ExecutionException e)
           {
             str = "";
           }
@@ -201,25 +211,25 @@ public class Tournament
         k = 0;
         while (k == 0)
         {
-          localObject = "";
-          Iterator localIterator2 = t.games.iterator();
+          String option = "";
+          Iterator<String> localIterator2 = t.games.iterator();
           while (localIterator2.hasNext()) {
-            localObject = (String)localObject + "|" + (String)localIterator2.next();
+            option = option + "|" + localIterator2.next();
           }
-          localObject = ((String)localObject).replaceAll("\\*", "\\\\*");
+          option = option.replaceAll("\\*", "\\\\*");
 
           System.out.println(t.games);
           System.out.print("enter next game: ");
-          for (localPrompter3 = CommandLinePrompter.prompt("enter next game", (String)localObject); !localPrompter3.isDone();) {}
+          for (p3 = CommandLinePrompter.prompt("enter next game", option); !p3.isDone();) {}
           try
           {
-            str = localPrompter3.get();
+            str = p3.get();
           }
-          catch (InterruptedException localInterruptedException5)
+          catch (InterruptedException e)
           {
             str = "";
           }
-          catch (ExecutionException localExecutionException5)
+          catch (ExecutionException e)
           {
             str = "";
           }
@@ -268,31 +278,35 @@ public class Tournament
 
   public void runTournament()
   {
-    ArrayList<String> localArrayList = new ArrayList<String>();
-    localArrayList.add("1");localArrayList.add("2");localArrayList.add("3");localArrayList.add("q");localArrayList.add("Q");localArrayList.add("s");localArrayList.add("S");
+    ArrayList<String> options = new ArrayList<String>();
+    options.add("1");options.add("2");options.add("3");options.add("q");options.add("Q");options.add("s");options.add("S");
     int i = 0;
     while (i == 0)
     {
       int j = 0;
       System.out.println("Which action to take next?\n1: assign a game to a match\n2: enter a match result\n3: write current state to html file\nq: quit");
-      Prompter localPrompter = ConsoleKeyPressPrompter.prompt(null, localArrayList);
-      while (!localPrompter.isDone()) {}
+      Prompter p = ConsoleKeyPressPrompter.prompt(null, options);
+      while (!p.isDone()) {}
+
       try
       {
-        if ((localPrompter.get().equals("q")) || (localPrompter.get().equals("Q"))) {
+		 System.out.println(p.get());
+
+
+        if ((p.get().equals("q")) || (p.get().equals("Q"))) {
           System.exit(0);
         }
-        if ((localPrompter.get() == "s") || (localPrompter.get() == "S")) {
+        if ((p.get() == "s") || (p.get() == "S")) {
           j = 4;
         } else {
-          j = new Integer("" + localPrompter.get()).intValue();
+          j = new Integer("" + p.get()).intValue();
         }
       }
-      catch (InterruptedException localInterruptedException)
+      catch (InterruptedException e)
       {
         j = 0;
       }
-      catch (ExecutionException localExecutionException)
+      catch (ExecutionException e)
       {
         j = 0;
       }
@@ -322,26 +336,26 @@ public class Tournament
 
   public void doAssignAGameToAMatch()
   {
-    int j = 0;
+    //int j = 0;
 
     System.out.print("Enter Match #: ");
 
     String str1 = "";
-    Iterator<String> localIterator1 = loadMatchNumberListFromDatabase().iterator();
-    while (localIterator1.hasNext()) {
-      str1 = str1 + "|" + localIterator1.next();
+    Iterator<String> it1 = loadMatchNumberListFromDatabase().iterator();
+    while (it1.hasNext()) {
+      str1 = str1 + "|" + it1.next();
     }
     int i;
     try
     {
-      Prompter localPrompter1 = CommandLinePrompter.prompt("Enter Match : ", str1);
-      while (!localPrompter1.isDone()) {}
+      Prompter p = CommandLinePrompter.prompt("Enter Match : ", str1);
+      while (!p.isDone()) {}
       try
       {
-        if (localPrompter1.get().equals("")) {
+        if (p.get().equals("")) {
           return;
         }
-        i = Integer.parseInt(localPrompter1.get());
+        i = Integer.parseInt(p.get());
       }
       catch (InterruptedException e)
       {
@@ -369,16 +383,16 @@ public class Tournament
       }
       System.out.print("Which game will this group be assigned to?: ");
       String str3 = "";
-      Iterator localIterator2 = loadGameListFromDatabase().iterator();
-      while (localIterator2.hasNext()) {
-        str3 = str3 + "|" + (String)localIterator2.next();
+      Iterator<String> it2 = loadGameListFromDatabase().iterator();
+      while (it2.hasNext()) {
+        str3 = str3 + "|" + it2.next();
       }
       str3 = str3.replaceAll("\\*", "\\\\*");
-      Prompter localPrompter2 = CommandLinePrompter.prompt("Which game will this group be assigned to?", str3);
-      while (! localPrompter2.isDone()) {}
+      Prompter p2 = CommandLinePrompter.prompt("Which game will this group be assigned to?", str3);
+      while (! p2.isDone()) {}
       try
       {
-        str2 = localPrompter2.get();
+        str2 = p2.get();
       }
       catch (InterruptedException e)
       {
@@ -394,14 +408,14 @@ public class Tournament
         System.out.println("No game by that name");
       }
     }
-    catch (SQLException localSQLException)
+    catch (SQLException e)
     {
-      localSQLException.printStackTrace();
+      e.printStackTrace();
       System.exit(0);
     }
-    catch (Exception localException2)
+    catch (Exception e)
     {
-      localException2.printStackTrace();
+      e.printStackTrace();
     }
   }
 
@@ -425,8 +439,8 @@ public class Tournament
     throws SQLException, Exception
   {
     this.stmt = this.conn.createStatement();
-    ResultSet localResultSet = this.stmt.executeQuery("SELECT getGameNumberForGame('" + paramString + "') as ky");
-    localResultSet.next();return localResultSet.getInt("ky");
+    ResultSet rs = this.stmt.executeQuery("SELECT getGameNumberForGame('" + paramString + "') as ky");
+    rs.next();return rs.getInt("ky");
   }
 
   public void assignAGameToAMatch(int paramInt, String paramString)
@@ -435,15 +449,15 @@ public class Tournament
     this.stmt.executeUpdate("CALL assignGameToMatch('" + paramInt + "', '" + paramString + "')");
   }
 
-  public String format(int paramInt)
+  public String format(int num)
   {
-    StringBuilder localStringBuilder = new StringBuilder("" + paramInt);
-    for (int i = localStringBuilder.length() - 1; i > 0; i--) {
-      if ((localStringBuilder.length() - i) % 4 == 2) {
-        localStringBuilder = localStringBuilder.insert(i, ',');
+    StringBuilder sb = new StringBuilder("" + num);
+    for (int i = sb.length() - 1; i > 0; i--) {
+      if ((sb.length() - i) % 4 == 2) {
+        sb = sb.insert(i, ',');
       }
     }
-    return localStringBuilder.toString();
+    return sb.toString();
   }
 
   public void doEnterMatchResult()
@@ -452,9 +466,9 @@ public class Tournament
     System.out.print("Enter Match #: ");
 
     String str1 = "";
-    Iterator localIterator = loadMatchNumberListFromDatabase().iterator();
+    Iterator<String> localIterator = loadMatchNumberListFromDatabase().iterator();
     while (localIterator.hasNext()) {
-      str1 = str1 + "|" + (String)localIterator.next();
+      str1 = str1 + "|" + localIterator.next();
     }
     Prompter localPrompter1; for (localPrompter1 = CommandLinePrompter.prompt("Enter Match #: ", str1); !localPrompter1.isDone();) {}
     int i;
@@ -504,18 +518,18 @@ public class Tournament
         return;
       }
     }
-    catch (InterruptedException localInterruptedException2)
+    catch (InterruptedException e)
     {
       return;
     }
-    catch (ExecutionException localExecutionException2)
+    catch (ExecutionException e)
     {
       return;
     }
-    ResultSet localResultSet2 = this.stmt.executeQuery("SELECT getScoreRegex(" + i + ") AS regex");
+    ResultSet rs2 = this.stmt.executeQuery("SELECT getScoreRegex(" + i + ") AS regex");
 
 
-    localResultSet2.next();String str2 = localResultSet2.getString("regex");
+    rs2.next();String str2 = rs2.getString("regex");
 
     ListIterator<String> li = playerList.listIterator();
     while (li.hasNext())
@@ -546,7 +560,7 @@ public class Tournament
         return;
       }
     }
-    ResultSet localResultSet3 = this.stmt.executeQuery("SELECT * from tblplayer WHERE 1=0");
+    ResultSet rs3 = this.stmt.executeQuery("SELECT * from tblplayer WHERE 1=0");
     if (playerList.size() <= 4)
     {
       playerArray = new String[4];
@@ -556,10 +570,10 @@ public class Tournament
         playerArray[j] = playerList.get(j);
         scoreArray[j] = scoreList.get(j);
       }
-      localResultSet3 = this.stmt.executeQuery("CALL previewFourPlayerScoreEntry(\'" + i + "\', \'" + playerArray[0] + "\', \'" + scoreArray[0] + "\', \'" + playerArray[1] + "\', \'" + scoreArray[1] + "\', \'" + playerArray[2] + "\', \'" + scoreArray[2] + "\', \'" + playerArray[3] + "\', \'" + scoreArray[3] + "\')");
+      rs3 = this.stmt.executeQuery("CALL previewFourPlayerScoreEntry(\'" + i + "\', \'" + playerArray[0] + "\', \'" + scoreArray[0] + "\', \'" + playerArray[1] + "\', \'" + scoreArray[1] + "\', \'" + playerArray[2] + "\', \'" + scoreArray[2] + "\', \'" + playerArray[3] + "\', \'" + scoreArray[3] + "\')");
     }
-    while (localResultSet3.next()) {
-      System.out.println(localResultSet3.getString("name") + ": " + localResultSet3.getString("score") + "  " + localResultSet3.getString("points"));
+    while (rs3.next()) {
+      System.out.println(rs3.getString("name") + ": " + rs3.getString("score") + "  " + rs3.getString("points"));
     }
     System.out.println("Is this information correct?");
     Prompter p3 = ConsoleKeyPressPrompter.prompt(null, options);
@@ -586,20 +600,20 @@ public class Tournament
 
   public void doWriteHTMLFile()
   {
-    PrintWriter localPrintWriter = null;
+    PrintWriter out = null;
     try
     {
       this.stmt = this.conn.createStatement();
-      ResultSet localResultSet = this.stmt.executeQuery("CALL getFullWebsite(\'" + this.competitionNumber + "\')");
-      while (localResultSet.next())
+      ResultSet rs = this.stmt.executeQuery("CALL getFullWebsite(\'" + this.competitionNumber + "\')");
+      while (rs.next())
       {
-        String str1 = localResultSet.getString("filename");
-        String str2 = localResultSet.getString("filetext");
+        String str1 = rs.getString("filename");
+        String str2 = rs.getString("filetext");
 
-        localPrintWriter = new PrintWriter(new FileOutputStream(str1));
-        localPrintWriter.println(str2);
+        out = new PrintWriter(new FileOutputStream(str1));
+        out.println(str2);
 
-        localPrintWriter.close();
+        out.close();
       }
     }
     catch (Exception e)
@@ -613,7 +627,7 @@ public class Tournament
     try
     {
       this.stmt = this.conn.createStatement();
-      this.stmt.executeUpdate("CALL generateRandomMatchupTournament(\'" + this.competitionNumber + "\')");
+      this.stmt.executeQuery("SELECT generateRandomMatchupTournament(\'Tournament\', 1)");
       return;
     }
     catch (SQLException e)
@@ -714,10 +728,10 @@ public class Tournament
   public void savePlayerListToDatabase()
     throws SQLException, Exception
   {
-    Iterator localIterator = this.players.iterator();
+    Iterator<String> localIterator = this.players.iterator();
     while (localIterator.hasNext())
     {
-      String str = (String)localIterator.next();
+      String str = localIterator.next();
       addPlayer(str);
     }
   }

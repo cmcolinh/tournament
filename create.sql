@@ -52,12 +52,19 @@ CREATE TABLE tblscore (
   
 CREATE TABLE tblscoring (
   _key smallint(6) NOT NULL AUTO_INCREMENT,
-  _fk_scoringscheme smallint(6) DEFAULT NULL,
-  numplayers smallint(6) DEFAULT NULL,
-  rank smallint(6) DEFAULT NULL,
-  pointsforrank smallint(6) DEFAULT NULL,
+  _fk_scoringscheme smallint(6) NOT NULL,
+  numplayers smallint(6) NOT NULL,
+  rank smallint(6) NOT NULL,
   PRIMARY KEY (_key),
   FOREIGN KEY (_fk_scoringscheme) REFERENCES tblscoringscheme (_key));
+  
+CREATE TABLE tblbonusscoring (
+  _key smallint(6) NOT NULL AUTO_INCREMENT,
+  _fk_scoring smallint(6) NOT NULL,
+  bonuspoints smallint(6) NOT NULL,
+  cond varchar(10000) NOT NULL,
+  PRIMARY KEY (_key),
+  FOREIGN KEY (_fk_scoring) REFERENCES tblscoring(_key));
      
  
 CREATE TABLE tblwebsitegenerator (
