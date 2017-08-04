@@ -332,6 +332,8 @@ END//
 CREATE PROCEDURE enterScore(
  IN scoreNum smallint, IN gameScore bigint)
 BEGIN
+	
+ DECLARE numPlayers int(4);
  
  UPDATE tblscore
  SET score = gameScore
@@ -340,6 +342,8 @@ BEGIN
  UPDATE tblscore
  SET rank = 0, points = 0
  WHERE _key = scoreNum;
+ 
+
  
  DROP TEMPORARY TABLE IF EXISTS rank;
  CREATE TEMPORARY TABLE IF NOT EXISTS rank AS
@@ -352,17 +356,20 @@ BEGIN
  
  DROP TEMPORARY TABLE IF EXISTS numPlayers;
  CREATE TEMPORARY TABLE numPlayers (ct smallint); 
- INSERT INTO numPlayers SELECT COUNT(*) from rank;
+ INSERT INTO numPlayersTbl SELECT COUNT(*) from rank;
  
  UPDATE tblscore as s JOIN rank r ON r._key = s._key SET s.rank = r.rank;
+ 
+ SET numPlayers = (SELECT * from numPlayersTbl LIMIT 1);
+ CALL getBonusPoints(scoreNum, numPlayers);
  
  UPDATE tblscore AS s
  JOIN tblmatch m ON s._fk_match = m._key
  JOIN tblscoring ts ON ts._fk_scoringscheme = m._fk_scoringscheme
  JOIN rank r on r._key = s._key
  JOIN tblplayer p ON s._fk_player = p._key
- SET s.points = ts.pointsforrank + getBonusPoints(scoreNum, (SELECT * from numPlayers LIMIT 1))
- WHERE ts.rank = s.rank AND (ts.numplayers = 0 OR ts.numplayers = (SELECT * FROM numPlayers LIMIT 1));
+ SET s.points = ts.pointsforrank + @bonuspoints;
+ WHERE ts.rank = s.rank AND (ts.numplayers = 0 OR ts.numplayers = numPlayers);
  
 END//
 
@@ -376,11 +383,10 @@ BEGIN
 END//
 
 
-CREATE FUNCTION getBonusPoints (
- scoreNum int, numPlayers int) RETURNS smallint
+CREATE PROCEDURE getBonusPoints (
+ IN scoreNum int, IN numPlayers int)
 BEGIN
 
- DECLARE bonuspoints smallint DEFAULT 0;
  DECLARE done BOOLEAN DEFAULT 0;
  DECLARE matchNum int(4);
  DECLARE o smallint(6);
@@ -399,7 +405,7 @@ BEGIN
  
  DECLARE CONTINUE HANDLER FOR SQLSTATE '02000' SET done=1; 
  SET matchNum = (SELECT _fk_match FROM tblscore where _key = scoreNum);
-
+ SET @bonuspoints = 0;
  SET SESSION group_concat_max_len = 1000000; 
  
   OPEN bonus;
@@ -411,29 +417,19 @@ BEGIN
  SET @S = (SELECT cond FROM tblbonuspoints WHERE _key = o);
  SET @ST = CONCAT('((SELECT bs.bonuspoints FROM tblscore s JOIN tblmatch m ON s._fk_match = m._key JOIN tblscoring s ON s._fk_scoringscheme = m._fk_scoringscheme JOIN tblbonusscoring bs ON bs._fk_scoring = sc._key WHERE bs._key = o) * (', @S, ')) INTO @OUT');
 
- CALL executeStatement(stmt);
+ PREPARE stmt FROM @ST;
+ EXECUTE stmt;
  
-SET bonuspoints = bonuspoints + @OUT;
+ SET @bonuspoints = @bonuspoints + @OUT;
 
-SET @OUT = null;
+ SET @OUT = null;
  
   UNTIL done END REPEAT;
   
   CLOSE bonus;
-  
- RETURN bonuspoints;
  
  END//
  
- 
-CREATE PROCEDURE executeStatement()
- 
-BEGIN
-	
- PREPARE stmt FROM @ST;
- EXECUTE stmt;
- 
-END//
  
 
 CREATE PROCEDURE getFullWebsite(
