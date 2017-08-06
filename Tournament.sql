@@ -380,7 +380,7 @@ BEGIN
   	        JOIN tblmatch m ON s._fk_match = m._key
   	        JOIN tblscoring sc ON sc._fk_scoringscheme = m._fk_scoringscheme
   	        JOIN tblbonusscoring bs ON bs._fk_scoring = sc._key
-            WHERE s._key = scoreNum
+            WHERE s._key = score
   	        AND sc.rank = s.rank
   	        AND sc.numplayers = numPlayers > 0)
   	    THEN
@@ -460,8 +460,6 @@ BEGIN
   UNTIL done END REPEAT;
   
   CLOSE bonus;
- 
-SELECT ((SELECT bs.bonuspoints FROM tblscore s JOIN tblmatch m ON s._fk_match = m._key JOIN tblscoring sc ON sc._fk_scoringscheme = m._fk_scoringscheme JOIN tblbonusscoring bs ON bs._fk_scoring = sc._key WHERE bs._key = 8 AND s._key = 4) * ((SELECT score FROM tblscore WHERE rank = 2 AND _fk_match = 10101) <= (SELECT score FROM tblscore WHERE rank = 3 AND _fk_match = 10101) + (SELECT score FROM tblscore WHERE rank = 4 AND _fk_match = 10101)));
 
 END//
  
@@ -587,21 +585,30 @@ CREATE PROCEDURE previewFourPlayerScoreEntry(
  IN player3Name VARCHAR(40), player3Score bigint, IN player4Name VARCHAR(40), IN player4Score bigint)
 BEGIN
  
+ DECLARE numPlayers int(4);
+ DECLARE score int(4);
+ DECLARE done BOOLEAN DEFAULT 0;
+ 
+ DECLARE scoreInMatch CURSOR
+ FOR
+ SELECT _key FROM tblscore WHERE _fk_match = matchNum;
+ DECLARE CONTINUE HANDLER FOR SQLSTATE '02000' SET done=1; 
+	
  DROP TEMPORARY TABLE IF EXISTS tempScore;
  
  CREATE TEMPORARY TABLE tempScore AS (SELECT * FROM tblscore s WHERE s._fk_match = matchNum);
  
  UPDATE tempScore ts JOIN tblplayer p on ts._fk_player = p._key 
- SET ts.score = player1Score WHERE name = player1Name;
+ SET ts.score = player1Score WHERE p.name = player1Name;
  
  UPDATE tempScore ts JOIN tblplayer p on ts._fk_player = p._key 
- SET ts.score = player2Score WHERE name = player2Name;
+ SET ts.score = player2Score WHERE p.name = player2Name;
  
  UPDATE tempScore ts JOIN tblplayer p on ts._fk_player = p._key 
- SET ts.score = player3Score WHERE name = player3Name;
+ SET ts.score = player3Score WHERE p.name = player3Name;
  
  UPDATE tempScore ts JOIN tblplayer p on ts._fk_player = p._key 
- SET ts.score = player4Score WHERE name = player4Name;
+ SET ts.score = player4Score WHERE p.name = player4Name;
  
  UPDATE tempScore
  SET rank = 0, points = 0;
@@ -614,19 +621,45 @@ BEGIN
  FROM tempScore s, (SELECT @curRank := 0, @prevRank := NULL, @incRank := 1 ) r
  WHERE s.score > 0 ORDER BY s.score DESC) t);
  
- DROP TEMPORARY TABLE IF EXISTS numPlayers;
- CREATE TEMPORARY TABLE numPlayers (ct smallint); 
- INSERT INTO numPlayers SELECT COUNT(*) from rank;
+ DROP TEMPORARY TABLE IF EXISTS numPlayersTbl;
+ CREATE TEMPORARY TABLE numPlayersTbl (ct smallint); 
+ INSERT INTO numPlayersTbl SELECT COUNT(*) from rank;
  
  UPDATE tempScore as s JOIN rank r ON r._key = s._key SET s.rank = r.rank;
  
- UPDATE tempScore AS s
+ SET numPlayers = (SELECT * from numPlayersTbl LIMIT 1);
+ DROP TEMPORARY TABLE IF EXISTS numPlayersTbl;
+ 
+ DROP TEMPORARY TABLE IF EXISTS bonusPoints;
+ CREATE TEMPORARY TABLE bonusPoints (_key int(4), bonuspoints int(4)); 
+ INSERT INTO bonusPoints SELECT _key, 0 from tblscore where _fk_match = matchNum; 
+ 
+  OPEN scoreInMatch;
+     REPEAT
+     FETCH scoreInMatch INTO score;
+        if (SELECT count(*)
+            FROM tempScore s
+  	        JOIN tblmatch m ON s._fk_match = m._key
+  	        JOIN tblscoring sc ON sc._fk_scoringscheme = m._fk_scoringscheme
+  	        JOIN tblbonusscoring bs ON bs._fk_scoring = sc._key
+            WHERE s._key = score
+  	        AND sc.rank = s.rank
+  	        AND sc.numplayers = numPlayers > 0)
+  	    THEN
+     	    CALL getBonusPoints(score, numPlayers);
+     	END IF; 
+     UNTIL done END REPEAT;  
+ CLOSE scoreInMatch; 
+ 
+ 
+ UPDATE tempScore s
  JOIN tblmatch m ON s._fk_match = m._key
  JOIN tblscoring ts ON ts._fk_scoringscheme = m._fk_scoringscheme
  JOIN rank r on r._key = s._key
  JOIN tblplayer p ON s._fk_player = p._key
- SET s.points = ts.pointsforrank
- WHERE ts.rank = s.rank AND (ts.numplayers = 0 OR ts.numplayers = (SELECT * FROM numPlayers LIMIT 1));
+ JOIN bonusPoints bp ON bp._key = s._key
+ SET s.points = ts.pointsforrank + bp.bonuspoints
+ WHERE ts.rank = s.rank AND (ts.numplayers = 0 OR ts.numplayers = numPlayers);
  
  SELECT p.name, FORMAT(s.score, 0) as score, s.points
  FROM tempScore s JOIN tblplayer p ON s._fk_player = p._key WHERE p.name != 'bye';
