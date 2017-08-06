@@ -334,6 +334,13 @@ CREATE PROCEDURE enterScore(
 BEGIN
 	
  DECLARE numPlayers int(4);
+ DECLARE score int(4);
+ DECLARE done BOOLEAN DEFAULT 0;
+ 
+ DECLARE scoreInMatch CURSOR
+ FOR
+ SELECT _key FROM tblscore WHERE _fk_match = (SELECT _fk_match FROM tblscore WHERE _key = scoreNum);
+ DECLARE CONTINUE HANDLER FOR SQLSTATE '02000' SET done=1;
  
  UPDATE tblscore
  SET score = gameScore
@@ -361,14 +368,34 @@ BEGIN
  SET numPlayers = (SELECT * from numPlayersTbl LIMIT 1);
  DROP TEMPORARY TABLE IF EXISTS numPlayersTbl;
  
- CALL getBonusPoints(scoreNum, numPlayers);
+ DROP TEMPORARY TABLE IF EXISTS bonusPoints;
+ CREATE TEMPORARY TABLE bonusPoints (_key int(4), bonuspoints int(4)); 
+ INSERT INTO bonusPoints SELECT _key, 0 from tblscore where _fk_match = (select _fk_match from tblscore where _key = scoreNum LIMIT 1);
  
- UPDATE tblscore AS s
+ OPEN scoreInMatch;
+     REPEAT
+     FETCH scoreInMatch INTO score;
+        if (SELECT count(*)
+            FROM tblscore s
+  	        JOIN tblmatch m ON s._fk_match = m._key
+  	        JOIN tblscoring sc ON sc._fk_scoringscheme = m._fk_scoringscheme
+  	        JOIN tblbonusscoring bs ON bs._fk_scoring = sc._key
+            WHERE s._key = scoreNum
+  	        AND sc.rank = s.rank
+  	        AND sc.numplayers = numPlayers > 0)
+  	    THEN
+     	    CALL getBonusPoints(score, numPlayers);
+     	END IF;
+     UNTIL done END REPEAT;  
+ CLOSE scoreInMatch; 
+ 
+ UPDATE tblscore s
  JOIN tblmatch m ON s._fk_match = m._key
  JOIN tblscoring ts ON ts._fk_scoringscheme = m._fk_scoringscheme
  JOIN rank r on r._key = s._key
  JOIN tblplayer p ON s._fk_player = p._key
- SET s.points = ts.pointsforrank + @bonuspoints
+ JOIN bonusPoints bp ON bp._key = s._key
+ SET s.points = ts.pointsforrank + bp.bonuspoints
  WHERE ts.rank = s.rank AND (ts.numplayers = 0 OR ts.numplayers = numPlayers);
  
 END//
@@ -403,8 +430,10 @@ BEGIN
   	AND sc.numplayers = numPlayers;
  
  DECLARE CONTINUE HANDLER FOR SQLSTATE '02000' SET done=1; 
+ 
+ UPDATE bonusPoints SET bonuspoints = 0 WHERE _key = scoreNum;
+ 
  SET matchNum = (SELECT _fk_match from tblscore where _key = scoreNum);
- SET @bonuspoints = 0;
  SET SESSION group_concat_max_len = 1000000; 
  
   OPEN bonus;
@@ -413,27 +442,28 @@ BEGIN
  
  FETCH bonus INTO bonusCheck;
  
- SET @S = (SELECT cond FROM tblbonusscoring WHERE _key = bonusCheck);
- SET @ST = CONCAT('SELECT ((SELECT bs.bonuspoints FROM tblscore s JOIN tblmatch m ON s._fk_match = m._key JOIN tblscoring sc ON sc._fk_scoringscheme = m._fk_scoringscheme JOIN tblbonusscoring bs ON bs._fk_scoring = sc._key WHERE bs._key = bonusCheck AND s._key = scoreNum) * (', @S, ')) INTO @OUT');
+     SET @S = (SELECT cond FROM tblbonusscoring WHERE _key = bonusCheck);
+     SET @ST = CONCAT('SELECT ((SELECT bs.bonuspoints FROM tblscore s JOIN tblmatch m ON s._fk_match = m._key JOIN tblscoring sc ON sc._fk_scoringscheme = m._fk_scoringscheme JOIN tblbonusscoring bs ON bs._fk_scoring = sc._key WHERE bs._key = bonusCheck AND s._key = scoreNum) * (', @S, ')) INTO @OUT');
 
- SET @ST = REPLACE(@ST, 'bonusCheck', bonusCheck);
- SET @ST = REPLACE(@ST, 'scoreNum', scoreNum);
- SET @ST = REPLACE(@ST, 'matchNum', matchNum);
+     SET @ST = REPLACE(@ST, 'bonusCheck', bonusCheck);
+     SET @ST = REPLACE(@ST, 'scoreNum', scoreNum);
+     SET @ST = REPLACE(@ST, 'matchNum', matchNum);
  
- PREPARE stmt FROM @ST;
- EXECUTE stmt;
+     PREPARE stmt FROM @ST;
+     EXECUTE stmt;
  
- SET @bonuspoints = @bonuspoints + @OUT;
-
- SET @OUT = null;
+     if (! done) THEN
+         UPDATE bonusPoints SET bonuspoints = bonuspoints + @OUT WHERE _key = scoreNum;
+     END IF;
+     
  
   UNTIL done END REPEAT;
   
   CLOSE bonus;
  
-SELECT ((SELECT bs.bonuspoints FROM tblscore s JOIN tblmatch m ON s._fk_match = m._key JOIN tblscoring sc ON sc._fk_scoringscheme = m._fk_scoringscheme JOIN tblbonusscoring bs ON bs._fk_scoring = sc._key WHERE bs._key = 8 AND s._key = 4) * ((SELECT score FROM tblscore WHERE rank = 2 AND _fk_match = 10101) <= (SELECT score FROM tblscore WHERE rank = 3 AND _fk_match = 10101) + (SELECT score FROM tblscore WHERE rank = 4 AND _fk_match = 10101))) 
+SELECT ((SELECT bs.bonuspoints FROM tblscore s JOIN tblmatch m ON s._fk_match = m._key JOIN tblscoring sc ON sc._fk_scoringscheme = m._fk_scoringscheme JOIN tblbonusscoring bs ON bs._fk_scoring = sc._key WHERE bs._key = 8 AND s._key = 4) * ((SELECT score FROM tblscore WHERE rank = 2 AND _fk_match = 10101) <= (SELECT score FROM tblscore WHERE rank = 3 AND _fk_match = 10101) + (SELECT score FROM tblscore WHERE rank = 4 AND _fk_match = 10101)));
 
-  END//
+END//
  
  
 
