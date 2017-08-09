@@ -74,3 +74,17 @@ CREATE TABLE tblwebsitegenerator (
   filedef varchar(10000) DEFAULT NULL,
   PRIMARY KEY (_key),
   FOREIGN KEY (_fk_competition) REFERENCES tblcompetition (_key));
+  
+CREATE TABLE tempScore (
+  _key smallint(6) NOT NULL,
+  _fk_player smallint(6) DEFAULT NULL,
+  _fk_match smallint(6) DEFAULT NULL,
+  _fk_scoreset smallint(6) DEFAULT NULL,
+  score bigint(20) DEFAULT NULL,
+  rank smallint(6) DEFAULT NULL,
+  points tinyint(4) DEFAULT NULL,
+  session_id int(4) NOT NULL,
+  PRIMARY KEY (_key, session_id),
+  FOREIGN KEY (_fk_player) REFERENCES tblplayer (_key),
+  FOREIGN KEY (_fk_match) REFERENCES tblmatch (_key),
+  FOREIGN KEY (_fk_scoreset) REFERENCES tblscoreset (_key));  
