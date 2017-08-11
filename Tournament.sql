@@ -344,13 +344,10 @@ BEGIN
  
  DELETE FROM tempScore where session_id = connection_id();
  
- INSERT INTO tempScore(_key, _fk_player, _fk_match, _fk_scoreset, score, rank, points, session_id) SELECT _key, _fk_player, _fk_match, _fk_scoreset, score, 0,
- 0, connection_id() from tblscore where _fk_match = (SELECT _fk_match FROM tblscore WHERE _key = scoreNum LIMIT 1);
+ INSERT INTO tempScore(_key, _fk_player, _fk_match, _fk_scoreset, score, rank, points, session_id) 
+ SELECT s._key, s._fk_player, s._fk_match, s._fk_scoreset, s.score, 0, 0, connection_id() from tblscore s where _fk_match = (SELECT _fk_match FROM tblscore WHERE _key = scoreNum LIMIT 1);
  
- UPDATE tempScore
- SET score = gameScore
- WHERE _key = scoreNum
- AND session_id = connection_id();
+ UPDATE tempScore SET score = gameScore WHERE _key = scoreNum AND session_id = connection_id();
  
  DROP TEMPORARY TABLE IF EXISTS rank;
  CREATE TEMPORARY TABLE IF NOT EXISTS rank AS
@@ -371,7 +368,8 @@ BEGIN
  
  DROP TEMPORARY TABLE IF EXISTS bonusPoints;
  CREATE TEMPORARY TABLE bonusPoints (_key int(4), bonuspoints int(4)); 
- INSERT INTO bonusPoints SELECT _key, 0 from tempScore;
+ INSERT INTO bonusPoints SELECT s._key, 0 FROM tempScore s JOIN rank r ON r._key = s._key
+ WHERE s.session_id = connection_id();
  
  OPEN scoreInMatch;
      REPEAT
@@ -408,7 +406,7 @@ BEGIN
  WHERE ts.session_id = connection_id()
  AND s._key = ts._key;
  
- DELETE FROM tempScore WHERE session_id = connection_id();
+ DELETE FROM tempScore where session_id = connection_id();
  
 END//
 
@@ -643,7 +641,7 @@ BEGIN
  
  DROP TEMPORARY TABLE IF EXISTS bonusPoints;
  CREATE TEMPORARY TABLE bonusPoints (_key int(4), bonuspoints int(4)); 
- INSERT INTO bonusPoints SELECT _key, 0 from tblscore where _fk_match = matchNum; 
+ INSERT INTO bonusPoints SELECT s._key, 0 FROM tempScore JOIN rank r ON r._key = s._key;
  
   OPEN scoreInMatch;
      REPEAT
