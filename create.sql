@@ -55,6 +55,7 @@ CREATE TABLE tblscoring (
   _fk_scoringscheme smallint(6) NOT NULL,
   numplayers smallint(6) NOT NULL,
   rank smallint(6) NOT NULL,
+  pointsforrank smallint(6) NOT NULL,
   PRIMARY KEY (_key),
   FOREIGN KEY (_fk_scoringscheme) REFERENCES tblscoringscheme (_key));
   
@@ -74,6 +75,19 @@ CREATE TABLE tblwebsitegenerator (
   filedef varchar(10000) DEFAULT NULL,
   PRIMARY KEY (_key),
   FOREIGN KEY (_fk_competition) REFERENCES tblcompetition (_key));
+  
+
+CREATE TABLE tblcompetitionenrollment (
+  _key smallint(6) NOT NULL AUTO_INCREMENT,
+  _fk_competition smallint(6) NOT NULL,
+  _fk_player smallint(6) NOT NULL,
+  seed smallint(6) DEFAULT NULL,
+  report tinyint(1),
+  PRIMARY KEY (_key),
+  UNIQUE KEY (_fk_competition, _fk_player),
+  FOREIGN KEY (_fk_competition) REFERENCES tblcompetition(_key),
+  FOREIGN KEY (_fk_player) REFERENCES tblplayer(_key));
+  
   
 CREATE TABLE tempScore (
   _key smallint(6) NOT NULL,

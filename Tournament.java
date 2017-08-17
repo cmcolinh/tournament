@@ -627,7 +627,7 @@ public class Tournament
     try
     {
       this.stmt = this.conn.createStatement();
-      this.stmt.executeQuery("SELECT generateRandomMatchupTournament(\'Tournament\', 1)");
+      this.stmt.executeQuery("SELECT generateRandomMatchupTournament(\'" + competitionNumber + "\', \'1\')");
       return;
     }
     catch (SQLException e)
@@ -708,12 +708,12 @@ public class Tournament
     System.exit(0);
   }
 
-  public void addPlayer(String paramString)
+  public void addPlayer(String playerName)
   {
     try
     {
       this.stmt = this.conn.createStatement();
-      this.stmt.executeUpdate("CALL addPlayer (\'" + paramString.trim() + "\')");
+      this.stmt.executeUpdate("CALL enrollPlayerToCompetition (\'" + playerName.trim() + "\', \'" + competitionNumber + "\', NULL)");
     }
     catch (SQLException e)
     {

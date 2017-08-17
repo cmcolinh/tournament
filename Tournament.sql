@@ -1,12 +1,11 @@
 DELIMITER //
 
 
-
 CREATE FUNCTION competitionNameExists(
  competitionName VARCHAR(100)) RETURNS tinyint(1)
 BEGIN
  
- RETURN (SELECT (SELECT COUNT(*) AS my_bool FROM tblcompetition WHERE name = competitionName) = 1 as playerNameExists);
+ RETURN (SELECT (SELECT COUNT(*) AS my_bool FROM tblcompetition WHERE name = competitionName) = 1 as competitionNameExists);
 
 END//
 
@@ -54,17 +53,23 @@ BEGIN
 END//
 
  
-CREATE FUNCTION generateRandomMatchupTournament(competitionName VARCHAR(100), scoringScheme smallint) RETURNS smallint(6)
+CREATE FUNCTION generateNewCompetition(competitionName VARCHAR(100)) RETURNS smallint(6)
+BEGIN
+  INSERT INTO tblcompetition(name) VALUES (CONCAT(competitionName));
+  RETURN LAST_INSERT_ID();
+END//
+	
+
+CREATE FUNCTION generateRandomMatchupTournament(competitionNumber smallint(6), scoringScheme smallint) RETURNS smallint(6)
 BEGIN
  
  SET SESSION group_concat_max_len = 1000000;
  
- INSERT INTO tblcompetition(name) VALUES (CONCAT(competitionName));
- SET @competitionNumber = LAST_INSERT_ID();
- 
  DROP TEMPORARY TABLE IF EXISTS playerList;
  CREATE TEMPORARY TABLE IF NOT EXISTS playerList AS
- (SELECT * from tblplayer WHERE report = 1 ORDER BY RAND());
+ (SELECT p.* from tblplayer p
+ JOIN  tblcompetitionenrollment ce ON ce._fk_player = p._key
+ WHERE ce.report = 1 AND ce._fk_competition = competitionNumber ORDER BY RAND());
  
  IF (SELECT COUNT(*) FROM playerList) IN ('29', '30', '31', '32')
  THEN 
@@ -73,15 +78,18 @@ BEGIN
  
   DROP TEMPORARY TABLE IF EXISTS ab;
   CREATE TEMPORARY TABLE IF NOT EXISTS ab AS
-  (SELECT @row := @row + 1 as row, players.* FROM playerList players, (SELECT @row := 0) r);
+  (SELECT @row := @row + 1 as row, (SELECT players.* FROM playerList players
+  JOIN tblcompetitionenrollment ce ON players._key = ce._fk_player 
+  WHERE ce._fk_competition = competitionNumber AND ce.report = 1),
+  (SELECT @row := 0) r);
   
-  UPDATE ab SET row = 31 WHERE row = 18 AND (SELECT COUNT(*) FROM tblplayer WHERE report = 1) < 31;
+  UPDATE ab SET row = 31 WHERE row = 18 AND (SELECT COUNT(*) FROM playerList) < 31;
  
-  UPDATE ab SET row = 30 WHERE row = 9 AND (SELECT COUNT(*) FROM tblplayer WHERE report = 1) < 30;
+  UPDATE ab SET row = 30 WHERE row = 9 AND (SELECT COUNT(*) FROM playerList) < 30;
  
   UPDATE ab SET _key = getNewByePlayer() where _key = NULL;
  
-  UPDATE ab SET _key = createScoreset(_key, @competitionNumber);
+  UPDATE ab SET _key = createScoreset(_key, competitionNumber);
  
   DROP TEMPORARY TABLE IF EXISTS matchup;
   CREATE TEMPORARY TABLE IF NOT EXISTS matchup AS
@@ -101,13 +109,13 @@ BEGIN
   CREATE TEMPORARY TABLE IF NOT EXISTS ab AS
   (SELECT @row := @row + 1 as row, players.* FROM playerList players, (SELECT @row := 0) r);
   
-  UPDATE ab SET row = 35 WHERE row = 17 AND (SELECT COUNT(*) FROM tblplayer WHERE report = 1) < 35;
+  UPDATE ab SET row = 35 WHERE row = 17 AND (SELECT COUNT(*) FROM playerList) < 35;
  
-  UPDATE ab SET row = 34 WHERE row = 16 AND (SELECT COUNT(*) FROM tblplayer WHERE report = 1) < 34;
+  UPDATE ab SET row = 34 WHERE row = 16 AND (SELECT COUNT(*) FROM playerList) < 34;
  
   UPDATE ab SET _key = getNewByePlayer() where _key = NULL;
  
-  UPDATE ab SET _key = createScoreset(_key, @competitionNumber);
+  UPDATE ab SET _key = createScoreset(_key, competitionNumber);
  
   DROP TEMPORARY TABLE IF EXISTS matchup;
   CREATE TEMPORARY TABLE IF NOT EXISTS matchup AS
@@ -125,13 +133,13 @@ BEGIN
   CREATE TEMPORARY TABLE IF NOT EXISTS ab AS
   (SELECT @row := @row + 1 as row, players.* FROM playerList players, (SELECT @row := 0) r);
   
-  UPDATE ab SET row = 39 WHERE row = 34 AND (SELECT COUNT(*) FROM tblplayer WHERE report = 1) < 39;
+  UPDATE ab SET row = 39 WHERE row = 34 AND (SELECT COUNT(*) FROM playerList) < 39;
  
-  UPDATE ab SET row = 38 WHERE row = 16 AND (SELECT COUNT(*) FROM tblplayer WHERE report = 1) < 38;
+  UPDATE ab SET row = 38 WHERE row = 16 AND (SELECT COUNT(*) FROM playerList) < 38;
  
   UPDATE ab SET _key = getNewByePlayer() where _key = NULL;
  
-  UPDATE ab SET _key = createScoreset(_key, @competitionNumber);
+  UPDATE ab SET _key = createScoreset(_key, competitionNumber);
  
   DROP TEMPORARY TABLE IF EXISTS matchup;
   CREATE TEMPORARY TABLE IF NOT EXISTS matchup AS
@@ -149,21 +157,19 @@ BEGIN
    CREATE TEMPORARY TABLE IF NOT EXISTS ab AS
    (SELECT @row := @row + 1 as row, players.* FROM playerList players, (SELECT @row := 0) r);
    
-   UPDATE ab SET row = 51 WHERE row = 45 AND (SELECT COUNT(*) FROM tblplayer WHERE report = 1) < 51;
+   UPDATE ab SET row = 51 WHERE row = 45 AND (SELECT COUNT(*) FROM playerList) < 51;
   
-   UPDATE ab SET row = 50 WHERE row = 30 AND (SELECT COUNT(*) FROM tblplayer WHERE report = 1) < 50;
+   UPDATE ab SET row = 50 WHERE row = 30 AND (SELECT COUNT(*) FROM playerList) < 50;
   
    UPDATE ab SET _key = getNewByePlayer() where _key = NULL;
   
-   UPDATE ab SET _key = createScoreset(_key, @competitionNumber);
+   UPDATE ab SET _key = createScoreset(_key, competitionNumber);
   
    DROP TEMPORARY TABLE IF EXISTS matchup;
    CREATE TEMPORARY TABLE IF NOT EXISTS matchup AS
-   SELECT 101 as matchNum, 1 as playerNum UNION SELECT 101, 2 UNION SELECT 101, 3 UNION SELECT 101, 4 UNION SELECT 102, 5 UNION SELECT 102, 6 UNION SELECT 102, 7 UNION SELECT 102, 8 UNION SELECT 103, 9 UNION SELECT 103, 10 UNION SELECT 103, 11 UNION SELECT 103, 12 UNION SELECT 104, 13 UNION SELECT 104, 14 UNION SELECT 104, 15 UNION SELECT 104, 16 UNION SELECT 105, 17 UNION SELECT 105, 18 UNION SELECT 105, 19 UNION SELECT 105, 20 UNION SELECT 106, 21 UNION SELECT 106, 22 UNION SELECT 106, 23 UNION SELECT 106, 24 UNION SELECT 107, 25 UNION SELECT 107, 26 UNION SELECT 107, 27 UNION SELECT 107, 28 UNION SELECT 108, 29 UNION SELECT 108, 30 UNION SELECT 108, 31 UNION SELECT 108, 32 UNION SELECT 109, 33 UNION SELECT 109, 34 UNION SELECT 109, 35 UNION SELECT 109, 36 UNION SELECT 110, 37 UNION SELECT 110, 38 UNION SELECT 110, 39 UNION SELECT 110, 40 UNION SELECT 111, 41 UNION SELECT 111, 42 UNION SELECT 111, 43 UNION SELECT 111, 44 UNION SELECT 112, 45 UNION SELECT 112, 46 UNION SELECT 112, 47 UNION SELECT 112, 48 UNION SELECT if (players.size( > 48 {113, 49 UNION SELECT if (players.size( > 48 {113, 50 UNION SELECT if (players.size( > 48 {113, 51 UNION SELECT if (players.size( > 48 {113, 52 UNION SELECT 201, 1 UNION SELECT 201, 6 UNION SELECT 201, 11 UNION SELECT 201, 16 UNION SELECT 202, 5 UNION SELECT 202, 10 UNION SELECT 202, 15 UNION SELECT 202, 20 UNION SELECT 203, 9 UNION SELECT 203, 14 UNION SELECT 203, 19 UNION SELECT 203, 24 UNION SELECT 204, 13 UNION SELECT 204, 18 UNION SELECT 204, 23 UNION SELECT 204, 28 UNION SELECT 205, 17 UNION SELECT 205, 22 UNION SELECT 205, 27 UNION SELECT 205, 32 UNION SELECT 206, 21 UNION SELECT 206, 26 UNION SELECT 206, 31 UNION SELECT 206, 36 UNION SELECT 207, 25 UNION SELECT 207, 30 UNION SELECT 207, 35 UNION SELECT 207, 40 UNION SELECT 208, 29 UNION SELECT 208, 34 UNION SELECT 208, 39 UNION SELECT 208, 44 UNION SELECT 209, 33 UNION SELECT 209, 38 UNION SELECT 209, 43 UNION SELECT 209, 48 UNION SELECT 210, 37 UNION SELECT 210, 42 UNION SELECT 210, 47 UNION SELECT 210, 52 UNION SELECT 211, 41 UNION SELECT 211, 46 UNION SELECT 211, 51 UNION SELECT 211, 4 UNION SELECT 212, 45 UNION SELECT 212, 50 UNION SELECT 212, 3 UNION SELECT 212, 8 UNION SELECT 213, 49 UNION SELECT 213, 2 UNION SELECT 213, 7 UNION SELECT 213, 12 UNION SELECT 301, 1 UNION SELECT 301, 10 UNION SELECT 301, 7 UNION SELECT 301, 24 UNION SELECT 302, 5 UNION SELECT 302, 14 UNION SELECT 302, 11 UNION SELECT 302, 28 UNION SELECT 303, 9 UNION SELECT 303, 18 UNION SELECT 303, 15 UNION SELECT 303, 32 UNION SELECT 304, 13 UNION SELECT 304, 22 UNION SELECT 304, 19 UNION SELECT 304, 36 UNION SELECT 305, 17 UNION SELECT 305, 26 UNION SELECT 305, 23 UNION SELECT 305, 40 UNION SELECT 306, 21 UNION SELECT 306, 30 UNION SELECT 306, 27 UNION SELECT 306, 44 UNION SELECT 307, 25 UNION SELECT 307, 34 UNION SELECT 307, 31 UNION SELECT 307, 48 UNION SELECT 308, 29 UNION SELECT 308, 38 UNION SELECT 308, 35 UNION SELECT 308, 52 UNION SELECT 309, 33 UNION SELECT 309, 42 UNION SELECT 309, 39 UNION SELECT 309, 4 UNION SELECT 310, 37 UNION SELECT 310, 46 UNION SELECT 310, 43 UNION SELECT 310, 8 UNION SELECT 311, 41 UNION SELECT 311, 50 UNION SELECT 311, 47 UNION SELECT 311, 12 UNION SELECT 312, 45 UNION SELECT 312, 2 UNION SELECT 312, 51 UNION SELECT 312, 16 UNION SELECT 313, 49 UNION SELECT 313, 6 UNION SELECT 313, 3 UNION SELECT 313, 20 UNION SELECT 401, 1 UNION SELECT 401, 18 UNION SELECT 401, 39 UNION SELECT 401, 12 UNION SELECT 402, 5 UNION SELECT 402, 22 UNION SELECT 402, 43 UNION SELECT 402, 16 UNION SELECT 403, 9 UNION SELECT 403, 26 UNION SELECT 403, 47 UNION SELECT 403, 20 UNION SELECT 404, 13 UNION SELECT 404, 30 UNION SELECT 404, 51 UNION SELECT 404, 24 UNION SELECT 405, 17 UNION SELECT 405, 34 UNION SELECT 405, 3 UNION SELECT 405, 28 UNION SELECT 406, 21 UNION SELECT 406, 38 UNION SELECT 406, 7 UNION SELECT 406, 32 UNION SELECT 407, 25 UNION SELECT 407, 42 UNION SELECT 407, 11 UNION SELECT 407, 36 UNION SELECT 408, 29 UNION SELECT 408, 46 UNION SELECT 408, 15 UNION SELECT 408, 40 UNION SELECT 409, 33 UNION SELECT 409, 50 UNION SELECT 409, 19 UNION SELECT 409, 44 UNION SELECT 410, 37 UNION SELECT 410, 2 UNION SELECT 410, 23 UNION SELECT 410, 48 UNION SELECT 411, 41 UNION SELECT 411, 6 UNION SELECT 411, 27 UNION SELECT 411, 52 UNION SELECT 412, 45 UNION SELECT 412, 10 UNION SELECT 412, 31 UNION SELECT 412, 4 UNION SELECT 413, 49 UNION SELECT 413, 14 UNION SELECT 413, 35 UNION SELECT 413, 8 UNION SELECT 501, 1 UNION SELECT 501, 22 UNION SELECT 501, 47 UNION SELECT 501, 40 UNION SELECT 502, 5 UNION SELECT 502, 26 UNION SELECT 502, 51 UNION SELECT 502, 44 UNION SELECT 503, 9 UNION SELECT 503, 30 UNION SELECT 503, 3 UNION SELECT 503, 48 UNION SELECT 504, 13 UNION SELECT 504, 34 UNION SELECT 504, 7 UNION SELECT 504, 52 UNION SELECT 505, 17 UNION SELECT 505, 38 UNION SELECT 505, 11 UNION SELECT 505, 4 UNION SELECT 506, 21 UNION SELECT 506, 42 UNION SELECT 506, 15 UNION SELECT 506, 8 UNION SELECT 507, 25 UNION SELECT 507, 46 UNION SELECT 507, 19 UNION SELECT 507, 12 UNION SELECT 508, 29 UNION SELECT 508, 50 UNION SELECT 508, 23 UNION SELECT 508, 16 UNION SELECT 509, 33 UNION SELECT 509, 2 UNION SELECT 509, 27 UNION SELECT 509, 20 UNION SELECT 510, 37 UNION SELECT 510, 6 UNION SELECT 510, 31 UNION SELECT 510, 24 UNION SELECT 511, 41 UNION SELECT 511, 10 UNION SELECT 511, 35 UNION SELECT 511, 28 UNION SELECT 512, 45 UNION SELECT 512, 14 UNION SELECT 512, 39 UNION SELECT 512, 32 UNION SELECT 513, 49 UNION SELECT 513, 18 UNION SELECT 513, 43 UNION SELECT 513, 36 UNION SELECT 601, 1 UNION SELECT 601, 26 UNION SELECT 601, 15 UNION SELECT 601, 52 UNION SELECT 602, 5 UNION SELECT 602, 30 UNION SELECT 602, 19 UNION SELECT 602, 4 UNION SELECT 603, 9 UNION SELECT 603, 34 UNION SELECT 603, 23 UNION SELECT 603, 8 UNION SELECT 604, 13 UNION SELECT 604, 38 UNION SELECT 604, 27 UNION SELECT 604, 12 UNION SELECT 605, 17 UNION SELECT 605, 42 UNION SELECT 605, 31 UNION SELECT 605, 16 UNION SELECT 606, 21 UNION SELECT 606, 46 UNION SELECT 606, 35 UNION SELECT 606, 20 UNION SELECT 607, 25 UNION SELECT 607, 50 UNION SELECT 607, 39 UNION SELECT 607, 24 UNION SELECT 608, 29 UNION SELECT 608, 2 UNION SELECT 608, 43 UNION SELECT 608, 28 UNION SELECT 609, 33 UNION SELECT 609, 6 UNION SELECT 609, 47 UNION SELECT 609, 32 UNION SELECT 610, 37 UNION SELECT 610, 10 UNION SELECT 610, 51 UNION SELECT 610, 36 UNION SELECT 611, 41 UNION SELECT 611, 14 UNION SELECT 611, 3 UNION SELECT 611, 40 UNION SELECT 612, 45 UNION SELECT 612, 18 UNION SELECT 612, 7 UNION SELECT 612, 44 UNION SELECT 613, 49 UNION SELECT 613, 22 UNION SELECT 613, 11 UNION SELECT 613, 48 UNION SELECT 701, 1 UNION SELECT 701, 30 UNION SELECT 701, 43 UNION SELECT 701, 20 UNION SELECT 702, 5 UNION SELECT 702, 34 UNION SELECT 702, 47 UNION SELECT 702, 24 UNION SELECT 703, 9 UNION SELECT 703, 38 UNION SELECT 703, 51 UNION SELECT 703, 28 UNION SELECT 704, 13 UNION SELECT 704, 42 UNION SELECT 704, 3 UNION SELECT 704, 32 UNION SELECT 705, 17 UNION SELECT 705, 46 UNION SELECT 705, 7 UNION SELECT 705, 36 UNION SELECT 706, 21 UNION SELECT 706, 50 UNION SELECT 706, 11 UNION SELECT 706, 40 UNION SELECT 707, 25 UNION SELECT 707, 2 UNION SELECT 707, 15 UNION SELECT 707, 44 UNION SELECT 708, 29 UNION SELECT 708, 6 UNION SELECT 708, 19 UNION SELECT 708, 48 UNION SELECT 709, 33 UNION SELECT 709, 10 UNION SELECT 709, 23 UNION SELECT 709, 52 UNION SELECT 710, 37 UNION SELECT 710, 14 UNION SELECT 710, 27 UNION SELECT 710, 4 UNION SELECT 711, 41 UNION SELECT 711, 18 UNION SELECT 711, 31 UNION SELECT 711, 8 UNION SELECT 712, 45 UNION SELECT 712, 22 UNION SELECT 712, 35 UNION SELECT 712, 12 UNION SELECT 713, 49 UNION SELECT 713, 26 UNION SELECT 713, 39 UNION SELECT 713, 16 UNION SELECT 801, 1 UNION SELECT 801, 34 UNION SELECT 801, 51 UNION SELECT 801, 32 UNION SELECT 802, 5 UNION SELECT 802, 38 UNION SELECT 802, 3 UNION SELECT 802, 36 UNION SELECT 803, 9 UNION SELECT 803, 42 UNION SELECT 803, 7 UNION SELECT 803, 40 UNION SELECT 804, 13 UNION SELECT 804, 46 UNION SELECT 804, 11 UNION SELECT 804, 44 UNION SELECT 805, 17 UNION SELECT 805, 50 UNION SELECT 805, 15 UNION SELECT 805, 48 UNION SELECT 806, 21 UNION SELECT 806, 2 UNION SELECT 806, 19 UNION SELECT 806, 52 UNION SELECT 807, 25 UNION SELECT 807, 6 UNION SELECT 807, 23 UNION SELECT 807, 4 UNION SELECT 808, 29 UNION SELECT 808, 10 UNION SELECT 808, 27 UNION SELECT 808, 8 UNION SELECT 809, 33 UNION SELECT 809, 14 UNION SELECT 809, 31 UNION SELECT 809, 12 UNION SELECT 810, 37 UNION SELECT 810, 18 UNION SELECT 810, 35 UNION SELECT 810, 16 UNION SELECT 811, 41 UNION SELECT 811, 22 UNION SELECT 811, 39 UNION SELECT 811, 20 UNION SELECT 812, 45 UNION SELECT 812, 26 UNION SELECT 812, 43 UNION SELECT 812, 24 UNION SELECT 813, 49 UNION SELECT 813, 30 UNION SELECT 813, 47 UNION SELECT 813, 28
+   SELECT 101 as matchNum, 1 as playerNum UNION SELECT 101, 2 UNION SELECT 101, 3 UNION SELECT 101, 4 UNION SELECT 102, 5 UNION SELECT 102, 6 UNION SELECT 102, 7 UNION SELECT 102, 8 UNION SELECT 103, 9 UNION SELECT 103, 10 UNION SELECT 103, 11 UNION SELECT 103, 12 UNION SELECT 104, 13 UNION SELECT 104, 14 UNION SELECT 104, 15 UNION SELECT 104, 16 UNION SELECT 105, 17 UNION SELECT 105, 18 UNION SELECT 105, 19 UNION SELECT 105, 20 UNION SELECT 106, 21 UNION SELECT 106, 22 UNION SELECT 106, 23 UNION SELECT 106, 24 UNION SELECT 107, 25 UNION SELECT 107, 26 UNION SELECT 107, 27 UNION SELECT 107, 28 UNION SELECT 108, 29 UNION SELECT 108, 30 UNION SELECT 108, 31 UNION SELECT 108, 32 UNION SELECT 109, 33 UNION SELECT 109, 34 UNION SELECT 109, 35 UNION SELECT 109, 36 UNION SELECT 110, 37 UNION SELECT 110, 38 UNION SELECT 110, 39 UNION SELECT 110, 40 UNION SELECT 111, 41 UNION SELECT 111, 42 UNION SELECT 111, 43 UNION SELECT 111, 44 UNION SELECT 112, 45 UNION SELECT 112, 46 UNION SELECT 112, 47 UNION SELECT 112, 48 UNION SELECT 113, 49 UNION SELECT 113, 50 UNION SELECT 113, 51 UNION SELECT 113, 52 UNION SELECT 201, 1 UNION SELECT 201, 6 UNION SELECT 201, 11 UNION SELECT 201, 16 UNION SELECT 202, 5 UNION SELECT 202, 10 UNION SELECT 202, 15 UNION SELECT 202, 20 UNION SELECT 203, 9 UNION SELECT 203, 14 UNION SELECT 203, 19 UNION SELECT 203, 24 UNION SELECT 204, 13 UNION SELECT 204, 18 UNION SELECT 204, 23 UNION SELECT 204, 28 UNION SELECT 205, 17 UNION SELECT 205, 22 UNION SELECT 205, 27 UNION SELECT 205, 32 UNION SELECT 206, 21 UNION SELECT 206, 26 UNION SELECT 206, 31 UNION SELECT 206, 36 UNION SELECT 207, 25 UNION SELECT 207, 30 UNION SELECT 207, 35 UNION SELECT 207, 40 UNION SELECT 208, 29 UNION SELECT 208, 34 UNION SELECT 208, 39 UNION SELECT 208, 44 UNION SELECT 209, 33 UNION SELECT 209, 38 UNION SELECT 209, 43 UNION SELECT 209, 48 UNION SELECT 210, 37 UNION SELECT 210, 42 UNION SELECT 210, 47 UNION SELECT 210, 52 UNION SELECT 211, 41 UNION SELECT 211, 46 UNION SELECT 211, 51 UNION SELECT 211, 4 UNION SELECT 212, 45 UNION SELECT 212, 50 UNION SELECT 212, 3 UNION SELECT 212, 8 UNION SELECT 213, 49 UNION SELECT 213, 2 UNION SELECT 213, 7 UNION SELECT 213, 12 UNION SELECT 301, 1 UNION SELECT 301, 10 UNION SELECT 301, 7 UNION SELECT 301, 24 UNION SELECT 302, 5 UNION SELECT 302, 14 UNION SELECT 302, 11 UNION SELECT 302, 28 UNION SELECT 303, 9 UNION SELECT 303, 18 UNION SELECT 303, 15 UNION SELECT 303, 32 UNION SELECT 304, 13 UNION SELECT 304, 22 UNION SELECT 304, 19 UNION SELECT 304, 36 UNION SELECT 305, 17 UNION SELECT 305, 26 UNION SELECT 305, 23 UNION SELECT 305, 40 UNION SELECT 306, 21 UNION SELECT 306, 30 UNION SELECT 306, 27 UNION SELECT 306, 44 UNION SELECT 307, 25 UNION SELECT 307, 34 UNION SELECT 307, 31 UNION SELECT 307, 48 UNION SELECT 308, 29 UNION SELECT 308, 38 UNION SELECT 308, 35 UNION SELECT 308, 52 UNION SELECT 309, 33 UNION SELECT 309, 42 UNION SELECT 309, 39 UNION SELECT 309, 4 UNION SELECT 310, 37 UNION SELECT 310, 46 UNION SELECT 310, 43 UNION SELECT 310, 8 UNION SELECT 311, 41 UNION SELECT 311, 50 UNION SELECT 311, 47 UNION SELECT 311, 12 UNION SELECT 312, 45 UNION SELECT 312, 2 UNION SELECT 312, 51 UNION SELECT 312, 16 UNION SELECT 313, 49 UNION SELECT 313, 6 UNION SELECT 313, 3 UNION SELECT 313, 20 UNION SELECT 401, 1 UNION SELECT 401, 18 UNION SELECT 401, 39 UNION SELECT 401, 12 UNION SELECT 402, 5 UNION SELECT 402, 22 UNION SELECT 402, 43 UNION SELECT 402, 16 UNION SELECT 403, 9 UNION SELECT 403, 26 UNION SELECT 403, 47 UNION SELECT 403, 20 UNION SELECT 404, 13 UNION SELECT 404, 30 UNION SELECT 404, 51 UNION SELECT 404, 24 UNION SELECT 405, 17 UNION SELECT 405, 34 UNION SELECT 405, 3 UNION SELECT 405, 28 UNION SELECT 406, 21 UNION SELECT 406, 38 UNION SELECT 406, 7 UNION SELECT 406, 32 UNION SELECT 407, 25 UNION SELECT 407, 42 UNION SELECT 407, 11 UNION SELECT 407, 36 UNION SELECT 408, 29 UNION SELECT 408, 46 UNION SELECT 408, 15 UNION SELECT 408, 40 UNION SELECT 409, 33 UNION SELECT 409, 50 UNION SELECT 409, 19 UNION SELECT 409, 44 UNION SELECT 410, 37 UNION SELECT 410, 2 UNION SELECT 410, 23 UNION SELECT 410, 48 UNION SELECT 411, 41 UNION SELECT 411, 6 UNION SELECT 411, 27 UNION SELECT 411, 52 UNION SELECT 412, 45 UNION SELECT 412, 10 UNION SELECT 412, 31 UNION SELECT 412, 4 UNION SELECT 413, 49 UNION SELECT 413, 14 UNION SELECT 413, 35 UNION SELECT 413, 8 UNION SELECT 501, 1 UNION SELECT 501, 22 UNION SELECT 501, 47 UNION SELECT 501, 40 UNION SELECT 502, 5 UNION SELECT 502, 26 UNION SELECT 502, 51 UNION SELECT 502, 44 UNION SELECT 503, 9 UNION SELECT 503, 30 UNION SELECT 503, 3 UNION SELECT 503, 48 UNION SELECT 504, 13 UNION SELECT 504, 34 UNION SELECT 504, 7 UNION SELECT 504, 52 UNION SELECT 505, 17 UNION SELECT 505, 38 UNION SELECT 505, 11 UNION SELECT 505, 4 UNION SELECT 506, 21 UNION SELECT 506, 42 UNION SELECT 506, 15 UNION SELECT 506, 8 UNION SELECT 507, 25 UNION SELECT 507, 46 UNION SELECT 507, 19 UNION SELECT 507, 12 UNION SELECT 508, 29 UNION SELECT 508, 50 UNION SELECT 508, 23 UNION SELECT 508, 16 UNION SELECT 509, 33 UNION SELECT 509, 2 UNION SELECT 509, 27 UNION SELECT 509, 20 UNION SELECT 510, 37 UNION SELECT 510, 6 UNION SELECT 510, 31 UNION SELECT 510, 24 UNION SELECT 511, 41 UNION SELECT 511, 10 UNION SELECT 511, 35 UNION SELECT 511, 28 UNION SELECT 512, 45 UNION SELECT 512, 14 UNION SELECT 512, 39 UNION SELECT 512, 32 UNION SELECT 513, 49 UNION SELECT 513, 18 UNION SELECT 513, 43 UNION SELECT 513, 36 UNION SELECT 601, 1 UNION SELECT 601, 26 UNION SELECT 601, 15 UNION SELECT 601, 52 UNION SELECT 602, 5 UNION SELECT 602, 30 UNION SELECT 602, 19 UNION SELECT 602, 4 UNION SELECT 603, 9 UNION SELECT 603, 34 UNION SELECT 603, 23 UNION SELECT 603, 8 UNION SELECT 604, 13 UNION SELECT 604, 38 UNION SELECT 604, 27 UNION SELECT 604, 12 UNION SELECT 605, 17 UNION SELECT 605, 42 UNION SELECT 605, 31 UNION SELECT 605, 16 UNION SELECT 606, 21 UNION SELECT 606, 46 UNION SELECT 606, 35 UNION SELECT 606, 20 UNION SELECT 607, 25 UNION SELECT 607, 50 UNION SELECT 607, 39 UNION SELECT 607, 24 UNION SELECT 608, 29 UNION SELECT 608, 2 UNION SELECT 608, 43 UNION SELECT 608, 28 UNION SELECT 609, 33 UNION SELECT 609, 6 UNION SELECT 609, 47 UNION SELECT 609, 32 UNION SELECT 610, 37 UNION SELECT 610, 10 UNION SELECT 610, 51 UNION SELECT 610, 36 UNION SELECT 611, 41 UNION SELECT 611, 14 UNION SELECT 611, 3 UNION SELECT 611, 40 UNION SELECT 612, 45 UNION SELECT 612, 18 UNION SELECT 612, 7 UNION SELECT 612, 44 UNION SELECT 613, 49 UNION SELECT 613, 22 UNION SELECT 613, 11 UNION SELECT 613, 48 UNION SELECT 701, 1 UNION SELECT 701, 30 UNION SELECT 701, 43 UNION SELECT 701, 20 UNION SELECT 702, 5 UNION SELECT 702, 34 UNION SELECT 702, 47 UNION SELECT 702, 24 UNION SELECT 703, 9 UNION SELECT 703, 38 UNION SELECT 703, 51 UNION SELECT 703, 28 UNION SELECT 704, 13 UNION SELECT 704, 42 UNION SELECT 704, 3 UNION SELECT 704, 32 UNION SELECT 705, 17 UNION SELECT 705, 46 UNION SELECT 705, 7 UNION SELECT 705, 36 UNION SELECT 706, 21 UNION SELECT 706, 50 UNION SELECT 706, 11 UNION SELECT 706, 40 UNION SELECT 707, 25 UNION SELECT 707, 2 UNION SELECT 707, 15 UNION SELECT 707, 44 UNION SELECT 708, 29 UNION SELECT 708, 6 UNION SELECT 708, 19 UNION SELECT 708, 48 UNION SELECT 709, 33 UNION SELECT 709, 10 UNION SELECT 709, 23 UNION SELECT 709, 52 UNION SELECT 710, 37 UNION SELECT 710, 14 UNION SELECT 710, 27 UNION SELECT 710, 4 UNION SELECT 711, 41 UNION SELECT 711, 18 UNION SELECT 711, 31 UNION SELECT 711, 8 UNION SELECT 712, 45 UNION SELECT 712, 22 UNION SELECT 712, 35 UNION SELECT 712, 12 UNION SELECT 713, 49 UNION SELECT 713, 26 UNION SELECT 713, 39 UNION SELECT 713, 16 UNION SELECT 801, 1 UNION SELECT 801, 34 UNION SELECT 801, 51 UNION SELECT 801, 32 UNION SELECT 802, 5 UNION SELECT 802, 38 UNION SELECT 802, 3 UNION SELECT 802, 36 UNION SELECT 803, 9 UNION SELECT 803, 42 UNION SELECT 803, 7 UNION SELECT 803, 40 UNION SELECT 804, 13 UNION SELECT 804, 46 UNION SELECT 804, 11 UNION SELECT 804, 44 UNION SELECT 805, 17 UNION SELECT 805, 50 UNION SELECT 805, 15 UNION SELECT 805, 48 UNION SELECT 806, 21 UNION SELECT 806, 2 UNION SELECT 806, 19 UNION SELECT 806, 52 UNION SELECT 807, 25 UNION SELECT 807, 6 UNION SELECT 807, 23 UNION SELECT 807, 4 UNION SELECT 808, 29 UNION SELECT 808, 10 UNION SELECT 808, 27 UNION SELECT 808, 8 UNION SELECT 809, 33 UNION SELECT 809, 14 UNION SELECT 809, 31 UNION SELECT 809, 12 UNION SELECT 810, 37 UNION SELECT 810, 18 UNION SELECT 810, 35 UNION SELECT 810, 16 UNION SELECT 811, 41 UNION SELECT 811, 22 UNION SELECT 811, 39 UNION SELECT 811, 20 UNION SELECT 812, 45 UNION SELECT 812, 26 UNION SELECT 812, 43 UNION SELECT 812, 24 UNION SELECT 813, 49 UNION SELECT 813, 30 UNION SELECT 813, 47 UNION SELECT 813, 28
    ORDER BY matchNum, RAND();
  END IF;
-
-
 
  
  CALL createTBDGame();
@@ -184,22 +190,22 @@ BEGIN
  CREATE TEMPORARY TABLE IF NOT EXISTS matches AS
  SELECT DISTINCT matchNum as matchNum from matchup;
  
- UPDATE matches SET matchNum = createMatch(10000 * @competitionNumber + matchNum, scoringScheme);
+ UPDATE matches SET matchNum = createMatch(10000 * competitionNumber + matchNum, scoringScheme);
  
- UPDATE scores SET matchNum = createScore((10000 * @competitionNumber + matchNum), playerNum);
+ UPDATE scores SET matchNum = createScore((10000 * competitionNumber + matchNum), playerNum);
  
- UPDATE tblscore s SET _fk_scoreset = (SELECT _key FROM tblscoreset ss WHERE ss._fk_player = s._fk_player AND ss._fk_competition = @competitionNumber LIMIT 1) WHERE inCompetitionSpan(s._fk_match, @competitionNumber);
+ UPDATE tblscore s SET _fk_scoreset = (SELECT _key FROM tblscoreset ss WHERE ss._fk_player = s._fk_player AND ss._fk_competition = competitionNumber LIMIT 1) WHERE inCompetitionSpan(s._fk_match, competitionNumber);
 
- INSERT INTO tblwebsitegenerator (_fk_competition, filename, filedef) VALUES (@competitionNumber, 'r1.html', CONCAT ('SELECT CONCAT(\'<html><head><html><head><title>Tournament Results for Round #1\n</title>\n</head><body bgcolor=#f0f0f0><center><h3>Tournament Results for Round #1,</h3></center>\n<hr>\n<pre>Overall Standings as of 1 round,</h3></center>\n\nPos Player Name          POINTS\n--- -------------------- ------\n\', (SELECT GROUP_CONCAT(line SEPARATOR \'\') FROM (SELECT CONCAT(LPAD(rank, 3, \' \'), \' \', RPAD(name, 20, \' \'), \'  \', LPAD(total, 3, \' \'), \'\n\') AS line FROM (SELECT _fk_player, total, CASE WHEN @l=total THEN @r ELSE @r:=@row + 1 END as rank, @l:=total, @row:=@row + 1 FROM (SELECT _fk_player, SUM(points) as total FROM tblscore JOIN tblplayer on tblscore._fk_player = tblplayer._key WHERE _fk_match < ', (SELECT 10000 * @competitionNumber + 200), ' AND _fk_match > ', (SELECT 10000 * @competitionNumber + 100) ,' AND report = 1 GROUP BY _fk_player ORDER BY total DESC) totals, (SELECT @r:=0, @row:=0, @l:=NULL) rank) summary JOIN tblplayer on tblplayer._key = summary._fk_player) a), \'\nSummary of all Matches in Round\n\', (SELECT GROUP_CONCAT(line SEPARATOR \'\n\') FROM (SELECT CONCAT(\'Match \',  m._key , \'         \', g.gamename, \'\n\', GROUP_CONCAT(CONCAT(CAST(RPAD(p.name, 20, \' \') AS CHAR CHARACTER SET utf8), \' \', CAST(LPAD(FORMAT(score, 0), 14, \' \')AS CHAR CHARACTER SET utf8), \' \', CAST(LPAD(s.points, 2, \' \') AS CHAR CHARACTER SET utf8)) SEPARATOR \'\n\')) AS line FROM tblmatch m JOIN tblscore s on s._fk_match = m._key JOIN tblgame g ON m._fk_game = g._key JOIN tblplayer p on p._key = s._fk_player WHERE m._key > ', (SELECT 10000 * @competitionNumber + 100), ' AND m._key < ', (SELECT 10000 * @competitionNumber + 200), ' AND p.name != \'bye\' GROUP BY m._key) a), \'\n\nRound 1\n<a href=\"r2.html\">Round 2</a>\n<a href=\"r3.html\">Round 3</a>\n<a href=\"r4.html\">Round 4</a>\n<a href=\"r5.html\">Round 5</a>\n<a href=\"r6.html\">Round 6</a>\n<a href=\"r7.html\">Round 7</a>\n<a href=\"r8.html\">Round 8</a>\n</pre><hr><p>\n</body>\n</html>\')'));
- INSERT INTO tblwebsitegenerator (_fk_competition, filename, filedef) VALUES (@competitionNumber, 'r2.html', CONCAT ('SELECT CONCAT(\'<html><head><html><head><title>Tournament Results for Round #2\n</title>\n</head><body bgcolor=#f0f0f0><center><h3>Tournament Results for Round #2,</h3></center>\n<hr>\n<pre>Overall Standings as of 2 rounds,</h3></center>\n\nPos Player Name          POINTS\n--- -------------------- ------\n\', (SELECT GROUP_CONCAT(line SEPARATOR \'\') FROM (SELECT CONCAT(LPAD(rank, 3, \' \'), \' \', RPAD(name, 20, \' \'), \'  \', LPAD(total, 3, \' \'), \'\n\') AS line FROM (SELECT _fk_player, total, CASE WHEN @l=total THEN @r ELSE @r:=@row + 1 END as rank, @l:=total, @row:=@row + 1 FROM (SELECT _fk_player, SUM(points) as total FROM tblscore JOIN tblplayer on tblscore._fk_player = tblplayer._key WHERE _fk_match < ', (SELECT 10000 * @competitionNumber + 300), ' AND _fk_match > ', (SELECT 10000 * @competitionNumber + 100) ,' AND report = 1 GROUP BY _fk_player ORDER BY total DESC) totals, (SELECT @r:=0, @row:=0, @l:=NULL) rank) summary JOIN tblplayer on tblplayer._key = summary._fk_player) a), \'\nSummary of all Matches in Round\n\', (SELECT GROUP_CONCAT(line SEPARATOR \'\n\') FROM (SELECT CONCAT(\'Match \',  m._key , \'         \', g.gamename, \'\n\', GROUP_CONCAT(CONCAT(CAST(RPAD(p.name, 20, \' \') AS CHAR CHARACTER SET utf8), \' \', CAST(LPAD(FORMAT(score, 0), 14, \' \')AS CHAR CHARACTER SET utf8), \' \', CAST(LPAD(s.points, 2, \' \') AS CHAR CHARACTER SET utf8)) SEPARATOR \'\n\')) AS line FROM tblmatch m JOIN tblscore s on s._fk_match = m._key JOIN tblgame g ON m._fk_game = g._key JOIN tblplayer p on p._key = s._fk_player WHERE m._key > ', (SELECT 10000 * @competitionNumber + 200), ' AND m._key < ', (SELECT 10000 * @competitionNumber + 300), ' AND p.name != \'bye\' GROUP BY m._key) a), \'\n\n<a href=\"r1.html\">Round 1</a>\nRound 2\n<a href=\"r3.html\">Round 3</a>\n<a href=\"r4.html\">Round 4</a>\n<a href=\"r5.html\">Round 5</a>\n<a href=\"r6.html\">Round 6</a>\n<a href=\"r7.html\">Round 7</a>\n<a href=\"r8.html\">Round 8</a>\n</pre><hr><p>\n</body>\n</html>\')'));
- INSERT INTO tblwebsitegenerator (_fk_competition, filename, filedef) VALUES (@competitionNumber, 'r3.html', CONCAT ('SELECT CONCAT(\'<html><head><html><head><title>Tournament Results for Round #3\n</title>\n</head><body bgcolor=#f0f0f0><center><h3>Tournament Results for Round #3,</h3></center>\n<hr>\n<pre>Overall Standings as of 3 rounds,</h3></center>\n\nPos Player Name          POINTS\n--- -------------------- ------\n\', (SELECT GROUP_CONCAT(line SEPARATOR \'\') FROM (SELECT CONCAT(LPAD(rank, 3, \' \'), \' \', RPAD(name, 20, \' \'), \'  \', LPAD(total, 3, \' \'), \'\n\') AS line FROM (SELECT _fk_player, total, CASE WHEN @l=total THEN @r ELSE @r:=@row + 1 END as rank, @l:=total, @row:=@row + 1 FROM (SELECT _fk_player, SUM(points) as total FROM tblscore JOIN tblplayer on tblscore._fk_player = tblplayer._key WHERE _fk_match < ', (SELECT 10000 * @competitionNumber + 400), ' AND _fk_match > ', (SELECT 10000 * @competitionNumber + 100) ,' AND report = 1 GROUP BY _fk_player ORDER BY total DESC) totals, (SELECT @r:=0, @row:=0, @l:=NULL) rank) summary JOIN tblplayer on tblplayer._key = summary._fk_player) a), \'\nSummary of all Matches in Round\n\', (SELECT GROUP_CONCAT(line SEPARATOR \'\n\') FROM (SELECT CONCAT(\'Match \',  m._key , \'         \', g.gamename, \'\n\', GROUP_CONCAT(CONCAT(CAST(RPAD(p.name, 20, \' \') AS CHAR CHARACTER SET utf8), \' \', CAST(LPAD(FORMAT(score, 0), 14, \' \')AS CHAR CHARACTER SET utf8), \' \', CAST(LPAD(s.points, 2, \' \') AS CHAR CHARACTER SET utf8)) SEPARATOR \'\n\')) AS line FROM tblmatch m JOIN tblscore s on s._fk_match = m._key JOIN tblgame g ON m._fk_game = g._key JOIN tblplayer p on p._key = s._fk_player WHERE m._key > ', (SELECT 10000 * @competitionNumber + 300), ' AND m._key < ', (SELECT 10000 * @competitionNumber + 400), ' AND p.name != \'bye\' GROUP BY m._key) a), \'\n\n<a href=\"r1.html\">Round 1</a>\n<a href=\"r2.html\">Round 2</a>\nRound 3\n<a href=\"r4.html\">Round 4</a>\n<a href=\"r5.html\">Round 5</a>\n<a href=\"r6.html\">Round 6</a>\n<a href=\"r7.html\">Round 7</a>\n<a href=\"r8.html\">Round 8</a>\n</pre><hr><p>\n</body>\n</html>\')'));
- INSERT INTO tblwebsitegenerator (_fk_competition, filename, filedef) VALUES (@competitionNumber, 'r4.html', CONCAT ('SELECT CONCAT(\'<html><head><html><head><title>Tournament Results for Round #4\n</title>\n</head><body bgcolor=#f0f0f0><center><h3>Tournament Results for Round #4,</h3></center>\n<hr>\n<pre>Overall Standings as of 4 rounds,</h3></center>\n\nPos Player Name          POINTS\n--- -------------------- ------\n\', (SELECT GROUP_CONCAT(line SEPARATOR \'\') FROM (SELECT CONCAT(LPAD(rank, 3, \' \'), \' \', RPAD(name, 20, \' \'), \'  \', LPAD(total, 3, \' \'), \'\n\') AS line FROM (SELECT _fk_player, total, CASE WHEN @l=total THEN @r ELSE @r:=@row + 1 END as rank, @l:=total, @row:=@row + 1 FROM (SELECT _fk_player, SUM(points) as total FROM tblscore JOIN tblplayer on tblscore._fk_player = tblplayer._key WHERE _fk_match < ', (SELECT 10000 * @competitionNumber + 500), ' AND _fk_match > ', (SELECT 10000 * @competitionNumber + 100) ,' AND report = 1 GROUP BY _fk_player ORDER BY total DESC) totals, (SELECT @r:=0, @row:=0, @l:=NULL) rank) summary JOIN tblplayer on tblplayer._key = summary._fk_player) a), \'\nSummary of all Matches in Round\n\', (SELECT GROUP_CONCAT(line SEPARATOR \'\n\') FROM (SELECT CONCAT(\'Match \',  m._key , \'         \', g.gamename, \'\n\', GROUP_CONCAT(CONCAT(CAST(RPAD(p.name, 20, \' \') AS CHAR CHARACTER SET utf8), \' \', CAST(LPAD(FORMAT(score, 0), 14, \' \')AS CHAR CHARACTER SET utf8), \' \', CAST(LPAD(s.points, 2, \' \') AS CHAR CHARACTER SET utf8)) SEPARATOR \'\n\')) AS line FROM tblmatch m JOIN tblscore s on s._fk_match = m._key JOIN tblgame g ON m._fk_game = g._key JOIN tblplayer p on p._key = s._fk_player WHERE m._key > ', (SELECT 10000 * @competitionNumber + 400), ' AND m._key < ', (SELECT 10000 * @competitionNumber + 500), ' AND p.name != \'bye\' GROUP BY m._key) a), \'\n\n<a href=\"r1.html\">Round 1</a>\n<a href=\"r2.html\">Round 2</a>\n<a href=\"r3.html\">Round 3</a>\nRound 4\n<a href=\"r5.html\">Round 5</a>\n<a href=\"r6.html\">Round 6</a>\n<a href=\"r7.html\">Round 7</a>\n<a href=\"r8.html\">Round 8</a>\n</pre><hr><p>\n</body>\n</html>\')'));
- INSERT INTO tblwebsitegenerator (_fk_competition, filename, filedef) VALUES (@competitionNumber, 'r5.html', CONCAT ('SELECT CONCAT(\'<html><head><html><head><title>Tournament Results for Round #5\n</title>\n</head><body bgcolor=#f0f0f0><center><h3>Tournament Results for Round #5,</h3></center>\n<hr>\n<pre>Overall Standings as of 5 rounds,</h3></center>\n\nPos Player Name          POINTS\n--- -------------------- ------\n\', (SELECT GROUP_CONCAT(line SEPARATOR \'\') FROM (SELECT CONCAT(LPAD(rank, 3, \' \'), \' \', RPAD(name, 20, \' \'), \'  \', LPAD(total, 3, \' \'), \'\n\') AS line FROM (SELECT _fk_player, total, CASE WHEN @l=total THEN @r ELSE @r:=@row + 1 END as rank, @l:=total, @row:=@row + 1 FROM (SELECT _fk_player, SUM(points) as total FROM tblscore JOIN tblplayer on tblscore._fk_player = tblplayer._key WHERE _fk_match < ', (SELECT 10000 * @competitionNumber + 600), ' AND _fk_match > ', (SELECT 10000 * @competitionNumber + 100) ,' AND report = 1 GROUP BY _fk_player ORDER BY total DESC) totals, (SELECT @r:=0, @row:=0, @l:=NULL) rank) summary JOIN tblplayer on tblplayer._key = summary._fk_player) a), \'\nSummary of all Matches in Round\n\', (SELECT GROUP_CONCAT(line SEPARATOR \'\n\') FROM (SELECT CONCAT(\'Match \',  m._key , \'         \', g.gamename, \'\n\', GROUP_CONCAT(CONCAT(CAST(RPAD(p.name, 20, \' \') AS CHAR CHARACTER SET utf8), \' \', CAST(LPAD(FORMAT(score, 0), 14, \' \')AS CHAR CHARACTER SET utf8), \' \', CAST(LPAD(s.points, 2, \' \') AS CHAR CHARACTER SET utf8)) SEPARATOR \'\n\')) AS line FROM tblmatch m JOIN tblscore s on s._fk_match = m._key JOIN tblgame g ON m._fk_game = g._key JOIN tblplayer p on p._key = s._fk_player WHERE m._key > ', (SELECT 10000 * @competitionNumber + 500), ' AND m._key < ', (SELECT 10000 * @competitionNumber + 600), ' AND p.name != \'bye\' GROUP BY m._key) a), \'\n\n<a href=\"r1.html\">Round 1</a>\n<a href=\"r2.html\">Round 2</a>\n<a href=\"r3.html\">Round 3</a>\n<a href=\"r4.html\">Round 4</a>\nRound 5\n<a href=\"r6.html\">Round 6</a>\n<a href=\"r7.html\">Round 7</a>\n<a href=\"r8.html\">Round 8</a>\n</pre><hr><p>\n</body>\n</html>\')'));
- INSERT INTO tblwebsitegenerator (_fk_competition, filename, filedef) VALUES (@competitionNumber, 'r6.html', CONCAT ('SELECT CONCAT(\'<html><head><html><head><title>Tournament Results for Round #6\n</title>\n</head><body bgcolor=#f0f0f0><center><h3>Tournament Results for Round #6,</h3></center>\n<hr>\n<pre>Overall Standings as of 6 rounds,</h3></center>\n\nPos Player Name          POINTS\n--- -------------------- ------\n\', (SELECT GROUP_CONCAT(line SEPARATOR \'\') FROM (SELECT CONCAT(LPAD(rank, 3, \' \'), \' \', RPAD(name, 20, \' \'), \'  \', LPAD(total, 3, \' \'), \'\n\') AS line FROM (SELECT _fk_player, total, CASE WHEN @l=total THEN @r ELSE @r:=@row + 1 END as rank, @l:=total, @row:=@row + 1 FROM (SELECT _fk_player, SUM(points) as total FROM tblscore JOIN tblplayer on tblscore._fk_player = tblplayer._key WHERE _fk_match < ', (SELECT 10000 * @competitionNumber + 700), ' AND _fk_match > ', (SELECT 10000 * @competitionNumber + 100) ,' AND report = 1 GROUP BY _fk_player ORDER BY total DESC) totals, (SELECT @r:=0, @row:=0, @l:=NULL) rank) summary JOIN tblplayer on tblplayer._key = summary._fk_player) a), \'\nSummary of all Matches in Round\n\', (SELECT GROUP_CONCAT(line SEPARATOR \'\n\') FROM (SELECT CONCAT(\'Match \',  m._key , \'         \', g.gamename, \'\n\', GROUP_CONCAT(CONCAT(CAST(RPAD(p.name, 20, \' \') AS CHAR CHARACTER SET utf8), \' \', CAST(LPAD(FORMAT(score, 0), 14, \' \')AS CHAR CHARACTER SET utf8), \' \', CAST(LPAD(s.points, 2, \' \') AS CHAR CHARACTER SET utf8)) SEPARATOR \'\n\')) AS line FROM tblmatch m JOIN tblscore s on s._fk_match = m._key JOIN tblgame g ON m._fk_game = g._key JOIN tblplayer p on p._key = s._fk_player WHERE m._key > ', (SELECT 10000 * @competitionNumber + 600), ' AND m._key < ', (SELECT 10000 * @competitionNumber + 700), ' AND p.name != \'bye\' GROUP BY m._key) a), \'\n\n<a href=\"r1.html\">Round 1</a>\n<a href=\"r2.html\">Round 2</a>\n<a href=\"r3.html\">Round 3</a>\n<a href=\"r4.html\">Round 4</a>\n<a href=\"r5.html\">Round 5</a>\nRound 6\n<a href=\"r7.html\">Round 7</a>\n<a href=\"r8.html\">Round 8</a>\n</pre><hr><p>\n</body>\n</html>\')'));
- INSERT INTO tblwebsitegenerator (_fk_competition, filename, filedef) VALUES (@competitionNumber, 'r7.html', CONCAT ('SELECT CONCAT(\'<html><head><html><head><title>Tournament Results for Round #7\n</title>\n</head><body bgcolor=#f0f0f0><center><h3>Tournament Results for Round #7,</h3></center>\n<hr>\n<pre>Overall Standings as of 7 rounds,</h3></center>\n\nPos Player Name          POINTS\n--- -------------------- ------\n\', (SELECT GROUP_CONCAT(line SEPARATOR \'\') FROM (SELECT CONCAT(LPAD(rank, 3, \' \'), \' \', RPAD(name, 20, \' \'), \'  \', LPAD(total, 3, \' \'), \'\n\') AS line FROM (SELECT _fk_player, total, CASE WHEN @l=total THEN @r ELSE @r:=@row + 1 END as rank, @l:=total, @row:=@row + 1 FROM (SELECT _fk_player, SUM(points) as total FROM tblscore JOIN tblplayer on tblscore._fk_player = tblplayer._key WHERE _fk_match < ', (SELECT 10000 * @competitionNumber + 800), ' AND _fk_match > ', (SELECT 10000 * @competitionNumber + 100) ,' AND report = 1 GROUP BY _fk_player ORDER BY total DESC) totals, (SELECT @r:=0, @row:=0, @l:=NULL) rank) summary JOIN tblplayer on tblplayer._key = summary._fk_player) a), \'\nSummary of all Matches in Round\n\', (SELECT GROUP_CONCAT(line SEPARATOR \'\n\') FROM (SELECT CONCAT(\'Match \',  m._key , \'         \', g.gamename, \'\n\', GROUP_CONCAT(CONCAT(CAST(RPAD(p.name, 20, \' \') AS CHAR CHARACTER SET utf8), \' \', CAST(LPAD(FORMAT(score, 0), 14, \' \')AS CHAR CHARACTER SET utf8), \' \', CAST(LPAD(s.points, 2, \' \') AS CHAR CHARACTER SET utf8)) SEPARATOR \'\n\')) AS line FROM tblmatch m JOIN tblscore s on s._fk_match = m._key JOIN tblgame g ON m._fk_game = g._key JOIN tblplayer p on p._key = s._fk_player WHERE m._key > ', (SELECT 10000 * @competitionNumber + 700), ' AND m._key < ', (SELECT 10000 * @competitionNumber + 800), ' AND p.name != \'bye\' GROUP BY m._key) a), \'\n\n<a href=\"r1.html\">Round 1</a>\n<a href=\"r2.html\">Round 2</a>\n<a href=\"r3.html\">Round 3</a>\n<a href=\"r4.html\">Round 4</a>\n<a href=\"r5.html\">Round 5</a>\n<a href=\"r6.html\">Round 6</a>\nRound 7\n<a href=\"r8.html\">Round 8</a>\n</pre><hr><p>\n</body>\n</html>\')'));
- INSERT INTO tblwebsitegenerator (_fk_competition, filename, filedef) VALUES (@competitionNumber, 'r8.html', CONCAT ('SELECT CONCAT(\'<html><head><html><head><title>Tournament Results for Round #8\n</title>\n</head><body bgcolor=#f0f0f0><center><h3>Tournament Results for Round #8,</h3></center>\n<hr>\n<pre>Overall Standings as of 8 rounds,</h3></center>\n\nPos Player Name          POINTS\n--- -------------------- ------\n\', (SELECT GROUP_CONCAT(line SEPARATOR \'\') FROM (SELECT CONCAT(LPAD(rank, 3, \' \'), \' \', RPAD(name, 20, \' \'), \'  \', LPAD(total, 3, \' \'), \'\n\') AS line FROM (SELECT _fk_player, total, CASE WHEN @l=total THEN @r ELSE @r:=@row + 1 END as rank, @l:=total, @row:=@row + 1 FROM (SELECT _fk_player, SUM(points) as total FROM tblscore JOIN tblplayer on tblscore._fk_player = tblplayer._key WHERE _fk_match < ', (SELECT 10000 * @competitionNumber + 900), ' AND _fk_match > ', (SELECT 10000 * @competitionNumber + 100) ,' AND report = 1 GROUP BY _fk_player ORDER BY total DESC) totals, (SELECT @r:=0, @row:=0, @l:=NULL) rank) summary JOIN tblplayer on tblplayer._key = summary._fk_player) a), \'\nSummary of all Matches in Round\n\', (SELECT GROUP_CONCAT(line SEPARATOR \'\n\') FROM (SELECT CONCAT(\'Match \',  m._key , \'         \', g.gamename, \'\n\', GROUP_CONCAT(CONCAT(CAST(RPAD(p.name, 20, \' \') AS CHAR CHARACTER SET utf8), \' \', CAST(LPAD(FORMAT(score, 0), 14, \' \')AS CHAR CHARACTER SET utf8), \' \', CAST(LPAD(s.points, 2, \' \') AS CHAR CHARACTER SET utf8)) SEPARATOR \'\n\')) AS line FROM tblmatch m JOIN tblscore s on s._fk_match = m._key JOIN tblgame g ON m._fk_game = g._key JOIN tblplayer p on p._key = s._fk_player WHERE m._key > ', (SELECT 10000 * @competitionNumber + 800), ' AND m._key < ', (SELECT 10000 * @competitionNumber + 900), ' AND p.name != \'bye\' GROUP BY m._key) a), \'\n\n<a href=\"r1.html\">Round 1</a>\n<a href=\"r2.html\">Round 2</a>\n<a href=\"r3.html\">Round 3</a>\n<a href=\"r4.html\">Round 4</a>\n<a href=\"r5.html\">Round 5</a>\n<a href=\"r6.html\">Round 6</a>\n<a href=\"r7.html\">Round 7</a>\nRound 8\n</pre><hr><p>\n</body>\n</html>\')'));
+ INSERT INTO tblwebsitegenerator (_fk_competition, filename, filedef) VALUES (competitionNumber, 'r1.html', CONCAT ('SELECT CONCAT(\'<html><head><html><head><title>Tournament Results for Round #1\n</title>\n</head><body bgcolor=#f0f0f0><center><h3>Tournament Results for Round #1,</h3></center>\n<hr>\n<pre>Overall Standings as of 1 round,</h3></center>\n\nPos Player Name          POINTS\n--- -------------------- ------\n\', (SELECT GROUP_CONCAT(line SEPARATOR \'\') FROM (SELECT CONCAT(LPAD(rank, 3, \' \'), \' \', RPAD(name, 20, \' \'), \'  \', LPAD(total, 3, \' \'), \'\n\') AS line FROM (SELECT totals.pn, total, CASE WHEN @l=total THEN @r ELSE @r:=@row + 1 END as rank, @l:=total, @row:=@row + 1 FROM (SELECT s._fk_player AS pn, SUM(points) AS total FROM tblscore s JOIN tblplayer p on s._fk_player = p._key JOIN tblcompetitionenrollment ce ON ce._fk_player = p._key WHERE p._key IN (select _fk_player from tblcompetitionenrollment where _fk_competition = ', competitionNumber, ') AND _fk_match < ', (SELECT 10000 * competitionNumber + 200), ' AND _fk_match > ', (SELECT 10000 * competitionNumber + 100) ,' AND ce.report = 1 GROUP BY p._key ORDER BY total DESC) totals, (SELECT @r:=0, @row:=0, @l:=NULL) rank) summary JOIN tblplayer on tblplayer._key = summary.pn) a), \'\nSummary of all Matches in Round\n\', (SELECT GROUP_CONCAT(line SEPARATOR \'\n\') FROM (SELECT CONCAT(\'Match \',  m._key , \'         \', g.gamename, \'\n\', GROUP_CONCAT(CONCAT(CAST(RPAD(p.name, 20, \' \') AS CHAR CHARACTER SET utf8), \' \', CAST(LPAD(FORMAT(score, 0), 14, \' \')AS CHAR CHARACTER SET utf8), \' \', CAST(LPAD(s.points, 2, \' \') AS CHAR CHARACTER SET utf8)) SEPARATOR \'\n\')) AS line FROM tblmatch m JOIN tblscore s on s._fk_match = m._key JOIN tblgame g ON m._fk_game = g._key JOIN tblplayer p on p._key = s._fk_player WHERE m._key > ', (SELECT 10000 * competitionNumber + 100), ' AND m._key < ', (SELECT 10000 * competitionNumber + 200), ' AND p.name != \'bye\' GROUP BY m._key) a), \'\n\nRound 1\n<a href=\"r2.html\">Round 2</a>\n<a href=\"r3.html\">Round 3</a>\n<a href=\"r4.html\">Round 4</a>\n<a href=\"r5.html\">Round 5</a>\n<a href=\"r6.html\">Round 6</a>\n<a href=\"r7.html\">Round 7</a>\n<a href=\"r8.html\">Round 8</a>\n</pre><hr><p>\n</body>\n</html>\')'));
+ INSERT INTO tblwebsitegenerator (_fk_competition, filename, filedef) VALUES (competitionNumber, 'r2.html', CONCAT ('SELECT CONCAT(\'<html><head><html><head><title>Tournament Results for Round #2\n</title>\n</head><body bgcolor=#f0f0f0><center><h3>Tournament Results for Round #2,</h3></center>\n<hr>\n<pre>Overall Standings as of 2 rounds,</h3></center>\n\nPos Player Name          POINTS\n--- -------------------- ------\n\', (SELECT GROUP_CONCAT(line SEPARATOR \'\') FROM (SELECT CONCAT(LPAD(rank, 3, \' \'), \' \', RPAD(name, 20, \' \'), \'  \', LPAD(total, 3, \' \'), \'\n\') AS line FROM (SELECT totals.pn, total, CASE WHEN @l=total THEN @r ELSE @r:=@row + 1 END as rank, @l:=total, @row:=@row + 1 FROM (SELECT s._fk_player AS pn, SUM(points) AS total FROM tblscore s JOIN tblplayer p on s._fk_player = p._key JOIN tblcompetitionenrollment ce ON ce._fk_player = p._key WHERE p._key IN (select _fk_player from tblcompetitionenrollment where _fk_competition = ', competitionNumber, ') AND _fk_match < ', (SELECT 10000 * competitionNumber + 300), ' AND _fk_match > ', (SELECT 10000 * competitionNumber + 100) ,' AND ce.report = 1 GROUP BY p._key ORDER BY total DESC) totals, (SELECT @r:=0, @row:=0, @l:=NULL) rank) summary JOIN tblplayer on tblplayer._key = summary.pn) a), \'\nSummary of all Matches in Round\n\', (SELECT GROUP_CONCAT(line SEPARATOR \'\n\') FROM (SELECT CONCAT(\'Match \',  m._key , \'         \', g.gamename, \'\n\', GROUP_CONCAT(CONCAT(CAST(RPAD(p.name, 20, \' \') AS CHAR CHARACTER SET utf8), \' \', CAST(LPAD(FORMAT(score, 0), 14, \' \')AS CHAR CHARACTER SET utf8), \' \', CAST(LPAD(s.points, 2, \' \') AS CHAR CHARACTER SET utf8)) SEPARATOR \'\n\')) AS line FROM tblmatch m JOIN tblscore s on s._fk_match = m._key JOIN tblgame g ON m._fk_game = g._key JOIN tblplayer p on p._key = s._fk_player WHERE m._key > ', (SELECT 10000 * competitionNumber + 200), ' AND m._key < ', (SELECT 10000 * competitionNumber + 300), ' AND p.name != \'bye\' GROUP BY m._key) a), \'\n\n<a href=\"r1.html\">Round 1</a>\nRound 2\n<a href=\"r3.html\">Round 3</a>\n<a href=\"r4.html\">Round 4</a>\n<a href=\"r5.html\">Round 5</a>\n<a href=\"r6.html\">Round 6</a>\n<a href=\"r7.html\">Round 7</a>\n<a href=\"r8.html\">Round 8</a>\n</pre><hr><p>\n</body>\n</html>\')'));
+ INSERT INTO tblwebsitegenerator (_fk_competition, filename, filedef) VALUES (competitionNumber, 'r3.html', CONCAT ('SELECT CONCAT(\'<html><head><html><head><title>Tournament Results for Round #3\n</title>\n</head><body bgcolor=#f0f0f0><center><h3>Tournament Results for Round #3,</h3></center>\n<hr>\n<pre>Overall Standings as of 3 rounds,</h3></center>\n\nPos Player Name          POINTS\n--- -------------------- ------\n\', (SELECT GROUP_CONCAT(line SEPARATOR \'\') FROM (SELECT CONCAT(LPAD(rank, 3, \' \'), \' \', RPAD(name, 20, \' \'), \'  \', LPAD(total, 3, \' \'), \'\n\') AS line FROM (SELECT totals.pn, total, CASE WHEN @l=total THEN @r ELSE @r:=@row + 1 END as rank, @l:=total, @row:=@row + 1 FROM (SELECT s._fk_player AS pn, SUM(points) AS total FROM tblscore s JOIN tblplayer p on s._fk_player = p._key JOIN tblcompetitionenrollment ce ON ce._fk_player = p._key WHERE p._key IN (select _fk_player from tblcompetitionenrollment where _fk_competition = ', competitionNumber, ') AND _fk_match < ', (SELECT 10000 * competitionNumber + 400), ' AND _fk_match > ', (SELECT 10000 * competitionNumber + 100) ,' AND ce.report = 1 GROUP BY p._key ORDER BY total DESC) totals, (SELECT @r:=0, @row:=0, @l:=NULL) rank) summary JOIN tblplayer on tblplayer._key = summary.pn) a), \'\nSummary of all Matches in Round\n\', (SELECT GROUP_CONCAT(line SEPARATOR \'\n\') FROM (SELECT CONCAT(\'Match \',  m._key , \'         \', g.gamename, \'\n\', GROUP_CONCAT(CONCAT(CAST(RPAD(p.name, 20, \' \') AS CHAR CHARACTER SET utf8), \' \', CAST(LPAD(FORMAT(score, 0), 14, \' \')AS CHAR CHARACTER SET utf8), \' \', CAST(LPAD(s.points, 2, \' \') AS CHAR CHARACTER SET utf8)) SEPARATOR \'\n\')) AS line FROM tblmatch m JOIN tblscore s on s._fk_match = m._key JOIN tblgame g ON m._fk_game = g._key JOIN tblplayer p on p._key = s._fk_player WHERE m._key > ', (SELECT 10000 * competitionNumber + 300), ' AND m._key < ', (SELECT 10000 * competitionNumber + 400), ' AND p.name != \'bye\' GROUP BY m._key) a), \'\n\n<a href=\"r1.html\">Round 1</a>\n<a href=\"r2.html\">Round 2</a>\nRound 3\n<a href=\"r4.html\">Round 4</a>\n<a href=\"r5.html\">Round 5</a>\n<a href=\"r6.html\">Round 6</a>\n<a href=\"r7.html\">Round 7</a>\n<a href=\"r8.html\">Round 8</a>\n</pre><hr><p>\n</body>\n</html>\')'));
+ INSERT INTO tblwebsitegenerator (_fk_competition, filename, filedef) VALUES (competitionNumber, 'r4.html', CONCAT ('SELECT CONCAT(\'<html><head><html><head><title>Tournament Results for Round #4\n</title>\n</head><body bgcolor=#f0f0f0><center><h3>Tournament Results for Round #4,</h3></center>\n<hr>\n<pre>Overall Standings as of 4 rounds,</h3></center>\n\nPos Player Name          POINTS\n--- -------------------- ------\n\', (SELECT GROUP_CONCAT(line SEPARATOR \'\') FROM (SELECT CONCAT(LPAD(rank, 3, \' \'), \' \', RPAD(name, 20, \' \'), \'  \', LPAD(total, 3, \' \'), \'\n\') AS line FROM (SELECT totals.pn, total, CASE WHEN @l=total THEN @r ELSE @r:=@row + 1 END as rank, @l:=total, @row:=@row + 1 FROM (SELECT s._fk_player AS pn, SUM(points) AS total FROM tblscore s JOIN tblplayer p on s._fk_player = p._key JOIN tblcompetitionenrollment ce ON ce._fk_player = p._key WHERE p._key IN (select _fk_player from tblcompetitionenrollment where _fk_competition = ', competitionNumber, ') AND _fk_match < ', (SELECT 10000 * competitionNumber + 500), ' AND _fk_match > ', (SELECT 10000 * competitionNumber + 100) ,' AND ce.report = 1 GROUP BY p._key ORDER BY total DESC) totals, (SELECT @r:=0, @row:=0, @l:=NULL) rank) summary JOIN tblplayer on tblplayer._key = summary.pn) a), \'\nSummary of all Matches in Round\n\', (SELECT GROUP_CONCAT(line SEPARATOR \'\n\') FROM (SELECT CONCAT(\'Match \',  m._key , \'         \', g.gamename, \'\n\', GROUP_CONCAT(CONCAT(CAST(RPAD(p.name, 20, \' \') AS CHAR CHARACTER SET utf8), \' \', CAST(LPAD(FORMAT(score, 0), 14, \' \')AS CHAR CHARACTER SET utf8), \' \', CAST(LPAD(s.points, 2, \' \') AS CHAR CHARACTER SET utf8)) SEPARATOR \'\n\')) AS line FROM tblmatch m JOIN tblscore s on s._fk_match = m._key JOIN tblgame g ON m._fk_game = g._key JOIN tblplayer p on p._key = s._fk_player WHERE m._key > ', (SELECT 10000 * competitionNumber + 400), ' AND m._key < ', (SELECT 10000 * competitionNumber + 500), ' AND p.name != \'bye\' GROUP BY m._key) a), \'\n\n<a href=\"r1.html\">Round 1</a>\n<a href=\"r2.html\">Round 2</a>\n<a href=\"r3.html\">Round 3</a>\nRound 4\n<a href=\"r5.html\">Round 5</a>\n<a href=\"r6.html\">Round 6</a>\n<a href=\"r7.html\">Round 7</a>\n<a href=\"r8.html\">Round 8</a>\n</pre><hr><p>\n</body>\n</html>\')'));
+ INSERT INTO tblwebsitegenerator (_fk_competition, filename, filedef) VALUES (competitionNumber, 'r5.html', CONCAT ('SELECT CONCAT(\'<html><head><html><head><title>Tournament Results for Round #5\n</title>\n</head><body bgcolor=#f0f0f0><center><h3>Tournament Results for Round #5,</h3></center>\n<hr>\n<pre>Overall Standings as of 5 rounds,</h3></center>\n\nPos Player Name          POINTS\n--- -------------------- ------\n\', (SELECT GROUP_CONCAT(line SEPARATOR \'\') FROM (SELECT CONCAT(LPAD(rank, 3, \' \'), \' \', RPAD(name, 20, \' \'), \'  \', LPAD(total, 3, \' \'), \'\n\') AS line FROM (SELECT totals.pn, total, CASE WHEN @l=total THEN @r ELSE @r:=@row + 1 END as rank, @l:=total, @row:=@row + 1 FROM (SELECT s._fk_player AS pn, SUM(points) AS total FROM tblscore s JOIN tblplayer p on s._fk_player = p._key JOIN tblcompetitionenrollment ce ON ce._fk_player = p._key WHERE p._key IN (select _fk_player from tblcompetitionenrollment where _fk_competition = ', competitionNumber, ') AND _fk_match < ', (SELECT 10000 * competitionNumber + 600), ' AND _fk_match > ', (SELECT 10000 * competitionNumber + 100) ,' AND ce.report = 1 GROUP BY p._key ORDER BY total DESC) totals, (SELECT @r:=0, @row:=0, @l:=NULL) rank) summary JOIN tblplayer on tblplayer._key = summary.pn) a), \'\nSummary of all Matches in Round\n\', (SELECT GROUP_CONCAT(line SEPARATOR \'\n\') FROM (SELECT CONCAT(\'Match \',  m._key , \'         \', g.gamename, \'\n\', GROUP_CONCAT(CONCAT(CAST(RPAD(p.name, 20, \' \') AS CHAR CHARACTER SET utf8), \' \', CAST(LPAD(FORMAT(score, 0), 14, \' \')AS CHAR CHARACTER SET utf8), \' \', CAST(LPAD(s.points, 2, \' \') AS CHAR CHARACTER SET utf8)) SEPARATOR \'\n\')) AS line FROM tblmatch m JOIN tblscore s on s._fk_match = m._key JOIN tblgame g ON m._fk_game = g._key JOIN tblplayer p on p._key = s._fk_player WHERE m._key > ', (SELECT 10000 * competitionNumber + 500), ' AND m._key < ', (SELECT 10000 * competitionNumber + 600), ' AND p.name != \'bye\' GROUP BY m._key) a), \'\n\n<a href=\"r1.html\">Round 1</a>\n<a href=\"r2.html\">Round 2</a>\n<a href=\"r3.html\">Round 3</a>\n<a href=\"r4.html\">Round 4</a>\nRound 5\n<a href=\"r6.html\">Round 6</a>\n<a href=\"r7.html\">Round 7</a>\n<a href=\"r8.html\">Round 8</a>\n</pre><hr><p>\n</body>\n</html>\')'));
+ INSERT INTO tblwebsitegenerator (_fk_competition, filename, filedef) VALUES (competitionNumber, 'r6.html', CONCAT ('SELECT CONCAT(\'<html><head><html><head><title>Tournament Results for Round #6\n</title>\n</head><body bgcolor=#f0f0f0><center><h3>Tournament Results for Round #6,</h3></center>\n<hr>\n<pre>Overall Standings as of 6 rounds,</h3></center>\n\nPos Player Name          POINTS\n--- -------------------- ------\n\', (SELECT GROUP_CONCAT(line SEPARATOR \'\') FROM (SELECT CONCAT(LPAD(rank, 3, \' \'), \' \', RPAD(name, 20, \' \'), \'  \', LPAD(total, 3, \' \'), \'\n\') AS line FROM (SELECT totals.pn, total, CASE WHEN @l=total THEN @r ELSE @r:=@row + 1 END as rank, @l:=total, @row:=@row + 1 FROM (SELECT s._fk_player AS pn, SUM(points) AS total FROM tblscore s JOIN tblplayer p on s._fk_player = p._key JOIN tblcompetitionenrollment ce ON ce._fk_player = p._key WHERE p._key IN (select _fk_player from tblcompetitionenrollment where _fk_competition = ', competitionNumber, ') AND _fk_match < ', (SELECT 10000 * competitionNumber + 700), ' AND _fk_match > ', (SELECT 10000 * competitionNumber + 100) ,' AND ce.report = 1 GROUP BY p._key ORDER BY total DESC) totals, (SELECT @r:=0, @row:=0, @l:=NULL) rank) summary JOIN tblplayer on tblplayer._key = summary.pn) a), \'\nSummary of all Matches in Round\n\', (SELECT GROUP_CONCAT(line SEPARATOR \'\n\') FROM (SELECT CONCAT(\'Match \',  m._key , \'         \', g.gamename, \'\n\', GROUP_CONCAT(CONCAT(CAST(RPAD(p.name, 20, \' \') AS CHAR CHARACTER SET utf8), \' \', CAST(LPAD(FORMAT(score, 0), 14, \' \')AS CHAR CHARACTER SET utf8), \' \', CAST(LPAD(s.points, 2, \' \') AS CHAR CHARACTER SET utf8)) SEPARATOR \'\n\')) AS line FROM tblmatch m JOIN tblscore s on s._fk_match = m._key JOIN tblgame g ON m._fk_game = g._key JOIN tblplayer p on p._key = s._fk_player WHERE m._key > ', (SELECT 10000 * competitionNumber + 600), ' AND m._key < ', (SELECT 10000 * competitionNumber + 700), ' AND p.name != \'bye\' GROUP BY m._key) a), \'\n\n<a href=\"r1.html\">Round 1</a>\n<a href=\"r2.html\">Round 2</a>\n<a href=\"r3.html\">Round 3</a>\n<a href=\"r4.html\">Round 4</a>\n<a href=\"r5.html\">Round 5</a>\nRound 6\n<a href=\"r7.html\">Round 7</a>\n<a href=\"r8.html\">Round 8</a>\n</pre><hr><p>\n</body>\n</html>\')'));
+ INSERT INTO tblwebsitegenerator (_fk_competition, filename, filedef) VALUES (competitionNumber, 'r7.html', CONCAT ('SELECT CONCAT(\'<html><head><html><head><title>Tournament Results for Round #7\n</title>\n</head><body bgcolor=#f0f0f0><center><h3>Tournament Results for Round #7,</h3></center>\n<hr>\n<pre>Overall Standings as of 7 rounds,</h3></center>\n\nPos Player Name          POINTS\n--- -------------------- ------\n\', (SELECT GROUP_CONCAT(line SEPARATOR \'\') FROM (SELECT CONCAT(LPAD(rank, 3, \' \'), \' \', RPAD(name, 20, \' \'), \'  \', LPAD(total, 3, \' \'), \'\n\') AS line FROM (SELECT totals.pn, total, CASE WHEN @l=total THEN @r ELSE @r:=@row + 1 END as rank, @l:=total, @row:=@row + 1 FROM (SELECT s._fk_player AS pn, SUM(points) AS total FROM tblscore s JOIN tblplayer p on s._fk_player = p._key JOIN tblcompetitionenrollment ce ON ce._fk_player = p._key WHERE p._key IN (select _fk_player from tblcompetitionenrollment where _fk_competition = ', competitionNumber, ') AND _fk_match < ', (SELECT 10000 * competitionNumber + 800), ' AND _fk_match > ', (SELECT 10000 * competitionNumber + 100) ,' AND ce.report = 1 GROUP BY p._key ORDER BY total DESC) totals, (SELECT @r:=0, @row:=0, @l:=NULL) rank) summary JOIN tblplayer on tblplayer._key = summary.pn) a), \'\nSummary of all Matches in Round\n\', (SELECT GROUP_CONCAT(line SEPARATOR \'\n\') FROM (SELECT CONCAT(\'Match \',  m._key , \'         \', g.gamename, \'\n\', GROUP_CONCAT(CONCAT(CAST(RPAD(p.name, 20, \' \') AS CHAR CHARACTER SET utf8), \' \', CAST(LPAD(FORMAT(score, 0), 14, \' \')AS CHAR CHARACTER SET utf8), \' \', CAST(LPAD(s.points, 2, \' \') AS CHAR CHARACTER SET utf8)) SEPARATOR \'\n\')) AS line FROM tblmatch m JOIN tblscore s on s._fk_match = m._key JOIN tblgame g ON m._fk_game = g._key JOIN tblplayer p on p._key = s._fk_player WHERE m._key > ', (SELECT 10000 * competitionNumber + 700), ' AND m._key < ', (SELECT 10000 * competitionNumber + 800), ' AND p.name != \'bye\' GROUP BY m._key) a), \'\n\n<a href=\"r1.html\">Round 1</a>\n<a href=\"r2.html\">Round 2</a>\n<a href=\"r3.html\">Round 3</a>\n<a href=\"r4.html\">Round 4</a>\n<a href=\"r5.html\">Round 5</a>\n<a href=\"r6.html\">Round 6</a>\nRound 7\n<a href=\"r8.html\">Round 8</a>\n</pre><hr><p>\n</body>\n</html>\')'));
+ INSERT INTO tblwebsitegenerator (_fk_competition, filename, filedef) VALUES (competitionNumber, 'r8.html', CONCAT ('SELECT CONCAT(\'<html><head><html><head><title>Tournament Results for Round #8\n</title>\n</head><body bgcolor=#f0f0f0><center><h3>Tournament Results for Round #8,</h3></center>\n<hr>\n<pre>Overall Standings as of 8 rounds,</h3></center>\n\nPos Player Name          POINTS\n--- -------------------- ------\n\', (SELECT GROUP_CONCAT(line SEPARATOR \'\') FROM (SELECT CONCAT(LPAD(rank, 3, \' \'), \' \', RPAD(name, 20, \' \'), \'  \', LPAD(total, 3, \' \'), \'\n\') AS line FROM (SELECT totals.pn, total, CASE WHEN @l=total THEN @r ELSE @r:=@row + 1 END as rank, @l:=total, @row:=@row + 1 FROM (SELECT s._fk_player AS pn, SUM(points) AS total FROM tblscore s JOIN tblplayer p on s._fk_player = p._key JOIN tblcompetitionenrollment ce ON ce._fk_player = p._key WHERE p._key IN (select _fk_player from tblcompetitionenrollment where _fk_competition = ', competitionNumber, ') AND _fk_match < ', (SELECT 10000 * competitionNumber + 900), ' AND _fk_match > ', (SELECT 10000 * competitionNumber + 100) ,' AND ce.report = 1 GROUP BY p._key ORDER BY total DESC) totals, (SELECT @r:=0, @row:=0, @l:=NULL) rank) summary JOIN tblplayer on tblplayer._key = summary.pn) a), \'\nSummary of all Matches in Round\n\', (SELECT GROUP_CONCAT(line SEPARATOR \'\n\') FROM (SELECT CONCAT(\'Match \',  m._key , \'         \', g.gamename, \'\n\', GROUP_CONCAT(CONCAT(CAST(RPAD(p.name, 20, \' \') AS CHAR CHARACTER SET utf8), \' \', CAST(LPAD(FORMAT(score, 0), 14, \' \')AS CHAR CHARACTER SET utf8), \' \', CAST(LPAD(s.points, 2, \' \') AS CHAR CHARACTER SET utf8)) SEPARATOR \'\n\')) AS line FROM tblmatch m JOIN tblscore s on s._fk_match = m._key JOIN tblgame g ON m._fk_game = g._key JOIN tblplayer p on p._key = s._fk_player WHERE m._key > ', (SELECT 10000 * competitionNumber + 800), ' AND m._key < ', (SELECT 10000 * competitionNumber + 900), ' AND p.name != \'bye\' GROUP BY m._key) a), \'\n\n<a href=\"r1.html\">Round 1</a>\n<a href=\"r2.html\">Round 2</a>\n<a href=\"r3.html\">Round 3</a>\n<a href=\"r4.html\">Round 4</a>\n<a href=\"r5.html\">Round 5</a>\n<a href=\"r6.html\">Round 6</a>\n<a href=\"r7.html\">Round 7</a>\nRound 8\n</pre><hr><p>\n</body>\n</html>\')'));
  
- RETURN @competitionNumber;
+ RETURN competitionNumber;
 
 END//
 
@@ -306,6 +312,23 @@ BEGIN
 END//
 
 
+CREATE PROCEDURE enrollPlayerToCompetition(
+  IN playerName VARCHAR(40),
+  IN competitionNum int(6),
+  IN seed int(6))
+BEGIN
+ DECLARE playerNum int(6);
+ IF (playerNameExists(playerName) = 0)
+ THEN
+ INSERT INTO tblplayer(name, report)
+ SELECT playerName, 1;
+ END IF;
+ SET playerNum = (SELECT _key FROM tblplayer WHERE name = playerName LIMIT 1);
+ INSERT INTO tblcompetitionenrollment (_fk_competition, _fk_player, seed, report)
+   VALUES (competitionNum, playerNum, seed, 1);
+END//
+
+
 CREATE PROCEDURE assignGameToMatch(
  IN matchNum int, 
  IN name VARCHAR(40))
@@ -328,152 +351,6 @@ BEGIN
 
 END//
 
-
-CREATE PROCEDURE enterScore(
- IN scoreNum smallint, IN gameScore bigint)
-BEGIN
-	
- DECLARE numPlayers int(4);
- DECLARE score int(4);
- DECLARE done BOOLEAN DEFAULT 0;
- 
- DECLARE scoreInMatch CURSOR
- FOR
- SELECT _key FROM tblscore WHERE _fk_match = (SELECT _fk_match FROM tblscore WHERE _key = scoreNum LIMIT 1);
- DECLARE CONTINUE HANDLER FOR SQLSTATE '02000' SET done=1;
- 
- DELETE FROM tempScore where session_id = connection_id();
- 
- INSERT INTO tempScore(_key, _fk_player, _fk_match, _fk_scoreset, score, rank, points, session_id) 
- SELECT s._key, s._fk_player, s._fk_match, s._fk_scoreset, s.score, 0, 0, connection_id() from tblscore s where _fk_match = (SELECT _fk_match FROM tblscore WHERE _key = scoreNum LIMIT 1);
- 
- UPDATE tempScore SET score = gameScore WHERE _key = scoreNum AND session_id = connection_id();
- 
- DROP TEMPORARY TABLE IF EXISTS rank;
- CREATE TEMPORARY TABLE IF NOT EXISTS rank AS
- (SELECT _key, rank FROM
- (SELECT _key, score, @curRank:=
- IF(@prevRank = score, @curRank, @incRank) AS rank, @incRank := @incRank + 1, @prevRank := score
- FROM tempScore s, (SELECT @curRank := 0, @prevRank := NULL, @incRank := 1 ) r
- WHERE s.score > 0 ORDER BY s.score DESC) t);
- 
- DROP TEMPORARY TABLE IF EXISTS numPlayersTbl;
- CREATE TEMPORARY TABLE numPlayersTbl (ct smallint); 
- INSERT INTO numPlayersTbl SELECT COUNT(*) from rank;
- 
- UPDATE tempScore s JOIN rank r ON r._key = s._key SET s.rank = r.rank;
- 
- SET numPlayers = (SELECT * from numPlayersTbl LIMIT 1);
- DROP TEMPORARY TABLE IF EXISTS numPlayersTbl;
- 
- DROP TEMPORARY TABLE IF EXISTS bonusPoints;
- CREATE TEMPORARY TABLE bonusPoints (_key int(4), bonuspoints int(4)); 
- INSERT INTO bonusPoints SELECT s._key, 0 FROM tempScore s JOIN rank r ON r._key = s._key
- WHERE s.session_id = connection_id();
- 
- OPEN scoreInMatch;
-     REPEAT
-     FETCH scoreInMatch INTO score;
-        if (SELECT count(*)
-            FROM tempScore s
-  	        JOIN tblmatch m ON s._fk_match = m._key
-  	        JOIN tblscoring sc ON sc._fk_scoringscheme = m._fk_scoringscheme
-  	        JOIN tblbonusscoring bs ON bs._fk_scoring = sc._key
-            WHERE s._key = score
-  	        AND sc.rank = s.rank
-  	        AND sc.numplayers = numPlayers > 0)
-  	    THEN
-     	    CALL getBonusPoints(score, numPlayers);
-     	END IF;
-     UNTIL done END REPEAT;  
- CLOSE scoreInMatch;
- 
- UPDATE tempScore s
- JOIN tblmatch m ON s._fk_match = m._key
- JOIN tblscoring ts ON ts._fk_scoringscheme = m._fk_scoringscheme
- JOIN rank r on r._key = s._key
- JOIN tblplayer p ON s._fk_player = p._key
- JOIN bonusPoints bp ON bp._key = s._key
- SET s.points = ts.pointsforrank + bp.bonuspoints
- WHERE ts.rank = s.rank AND (ts.numplayers = 0 OR ts.numplayers = numPlayers)
- AND session_id = connection_id();
- 
- UPDATE tblscore s
- JOIN tempScore ts ON s._key = ts._key
- SET s.points = ts.points,
-     s.score = ts.score,
-     s.rank = ts.rank
- WHERE ts.session_id = connection_id()
- AND s._key = ts._key;
- 
- DELETE FROM tempScore where session_id = connection_id();
- 
-END//
-
-
-CREATE PROCEDURE enterScoreByMatchNumberAndName(
- IN matchNum smallint, IN playerName VARCHAR(40), IN gameScore bigint)
-BEGIN
- 
- CALL enterScore ((SELECT s._key from tblscore s join tblplayer p on s._fk_player = p._key WHERE s._fk_match = matchNum AND p.name = playerName ORDER BY s._KEY DESC LIMIT 1), gameScore);
- 
-END//
-
-
-CREATE PROCEDURE getBonusPoints (
- IN scoreNum int(4), IN numPlayers int(4))
-BEGIN
-
- DECLARE done BOOLEAN DEFAULT 0;
- DECLARE matchNum int(4);
- DECLARE bonusCheck smallint(6);
- 
- DECLARE bonus CURSOR
- FOR
- SELECT bs._key 
- FROM tempScore s
-  	JOIN tblmatch m ON s._fk_match = m._key
-  	JOIN tblscoring sc ON sc._fk_scoringscheme = m._fk_scoringscheme
-  	JOIN tblbonusscoring bs ON bs._fk_scoring = sc._key
-  WHERE s._key = scoreNum
-  	AND sc.rank = s.rank
-  	AND sc.numplayers = numPlayers;
- 
- DECLARE CONTINUE HANDLER FOR SQLSTATE '02000' SET done=1; 
- 
- UPDATE bonusPoints SET bonuspoints = 0 WHERE _key = scoreNum;
- 
- SET matchNum = (SELECT _fk_match from tempScore where _key = scoreNum);
- SET SESSION group_concat_max_len = 1000000; 
- 
-  OPEN bonus;
- 
- REPEAT
- 
- FETCH bonus INTO bonusCheck;
- 
-     SET @S = (SELECT cond FROM tblbonusscoring WHERE _key = bonusCheck);
-     SET @ST = CONCAT('SELECT ((SELECT bs.bonuspoints FROM tempScore s JOIN tblmatch m ON s._fk_match = m._key JOIN tblscoring sc ON sc._fk_scoringscheme = m._fk_scoringscheme JOIN tblbonusscoring bs ON bs._fk_scoring = sc._key WHERE bs._key = bonusCheck AND s._key = scoreNum) * (', @S, ')) INTO @OUT');
-
-     SET @ST = REPLACE(@ST, 'bonusCheck', bonusCheck);
-     SET @ST = REPLACE(@ST, 'scoreNum', scoreNum);
-     SET @ST = REPLACE(@ST, 'matchNum', matchNum);
- 
-     PREPARE stmt FROM @ST;
-     EXECUTE stmt;
- 
-     if (! done) THEN
-         UPDATE bonusPoints SET bonuspoints = bonuspoints + @OUT WHERE _key = scoreNum;
-     END IF;
-     
- 
-  UNTIL done END REPEAT;
-  
-  CLOSE bonus;
-
-END//
- 
- 
 
 CREATE PROCEDURE getFullWebsite(
  IN competitionNumber smallint)
@@ -544,8 +421,6 @@ BEGIN
 END//
 
 
-
-
 CREATE PROCEDURE getPlayerNamesInCompetition(
  IN competitionNumber smallint)
 BEGIN
@@ -555,9 +430,6 @@ BEGIN
  WHERE p.report = 1 AND ss._fk_competition = competitionNumber;
  
 END//
-
-
-
 
 
 CREATE PROCEDURE getPlayerNamesInMatch(
@@ -587,97 +459,6 @@ BEGIN
  VALUES (matchNum, @TBD, scoringScheme);
 
 END//
-
-
-
-CREATE PROCEDURE previewFourPlayerScoreEntry(
- IN matchNum smallint, IN player1Name VARCHAR(40), IN player1Score bigint, IN player2Name VARCHAR(40), IN player2Score bigint,
- IN player3Name VARCHAR(40), player3Score bigint, IN player4Name VARCHAR(40), IN player4Score bigint)
-BEGIN
- 
- DECLARE numPlayers int(4);
- DECLARE score int(4);
- DECLARE done BOOLEAN DEFAULT 0;
- 
- DECLARE scoreInMatch CURSOR
- FOR
- SELECT _key FROM tblscore WHERE _fk_match = matchNum;
- DECLARE CONTINUE HANDLER FOR SQLSTATE '02000' SET done=1; 
-	
- DELETE FROM tempScore where session_id = connection_id();
- 
- INSERT INTO tempScore(_key, _fk_player, _fk_match, _fk_scoreset, score, rank, points, session_id) SELECT _key, _fk_player, _fk_match, _fk_scoreset, score, 0,
- 0, connection_id() from tblscore where _fk_match = matchNum;
-
- UPDATE tempScore ts JOIN tblplayer p on ts._fk_player = p._key 
- SET ts.score = player1Score WHERE p.name = player1Name AND session_id = connection_id();
- 
- UPDATE tempScore ts JOIN tblplayer p on ts._fk_player = p._key 
- SET ts.score = player2Score WHERE p.name = player2Name AND session_id = connection_id();
- 
- UPDATE tempScore ts JOIN tblplayer p on ts._fk_player = p._key 
- SET ts.score = player3Score WHERE p.name = player3Name AND session_id = connection_id();
- 
- UPDATE tempScore ts JOIN tblplayer p on ts._fk_player = p._key 
- SET ts.score = player4Score WHERE p.name = player4Name AND session_id = connection_id();
- 
- DROP TEMPORARY TABLE IF EXISTS rank;
- CREATE TEMPORARY TABLE IF NOT EXISTS rank AS
- (SELECT _key, rank FROM
- (SELECT _key, score, @curRank:=
- IF(@prevRank = score, @curRank, @incRank) AS rank, @incRank := @incRank + 1, @prevRank := score
- FROM tempScore s, (SELECT @curRank := 0, @prevRank := NULL, @incRank := 1 ) r
- WHERE s.score > 0 ORDER BY s.score DESC) t);
- 
- DROP TEMPORARY TABLE IF EXISTS numPlayersTbl;
- CREATE TEMPORARY TABLE numPlayersTbl (ct smallint); 
- INSERT INTO numPlayersTbl SELECT COUNT(*) from rank;
- 
- UPDATE tempScore as s JOIN rank r ON r._key = s._key SET s.rank = r.rank
- WHERE session_id = connection_id();
- 
- SET numPlayers = (SELECT * from numPlayersTbl LIMIT 1);
- DROP TEMPORARY TABLE IF EXISTS numPlayersTbl;
- 
- DROP TEMPORARY TABLE IF EXISTS bonusPoints;
- CREATE TEMPORARY TABLE bonusPoints (_key int(4), bonuspoints int(4)); 
- INSERT INTO bonusPoints SELECT s._key, 0 FROM tempScore JOIN rank r ON r._key = s._key;
- 
-  OPEN scoreInMatch;
-     REPEAT
-     FETCH scoreInMatch INTO score;
-        if (SELECT count(*)
-            FROM tempScore s
-  	        JOIN tblmatch m ON s._fk_match = m._key
-  	        JOIN tblscoring sc ON sc._fk_scoringscheme = m._fk_scoringscheme
-  	        JOIN tblbonusscoring bs ON bs._fk_scoring = sc._key
-            WHERE s._key = score
-  	        AND sc.rank = s.rank
-  	        AND sc.numplayers = numPlayers > 0)
-  	    THEN
-     	    CALL getBonusPoints(score, numPlayers);
-     	END IF; 
-     UNTIL done END REPEAT;  
- CLOSE scoreInMatch; 
- 
- 
- UPDATE tempScore s
- JOIN tblmatch m ON s._fk_match = m._key
- JOIN tblscoring ts ON ts._fk_scoringscheme = m._fk_scoringscheme
- JOIN rank r on r._key = s._key
- JOIN tblplayer p ON s._fk_player = p._key
- JOIN bonusPoints bp ON bp._key = s._key
- SET s.points = ts.pointsforrank + bp.bonuspoints
- WHERE ts.rank = s.rank AND (ts.numplayers = 0 OR ts.numplayers = numPlayers);
- AND session_id = connection_id();
- 
- SELECT p.name, FORMAT(s.score, 0) as score, s.points
- FROM tempScore s JOIN tblplayer p ON s._fk_player = p._key WHERE p.name != 'bye';
- 
- DELETE FROM tempScore WHERE session_id = connection_id();
- 
- END//
-
 
 
 CREATE PROCEDURE removeGame(
