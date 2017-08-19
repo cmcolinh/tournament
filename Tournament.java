@@ -12,6 +12,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
+import java.util.TreeMap;
 import java.util.concurrent.ExecutionException;
 
 public class Tournament
@@ -279,12 +280,12 @@ public class Tournament
   public void runTournament()
   {
     ArrayList<String> options = new ArrayList<String>();
-    options.add("1");options.add("2");options.add("3");options.add("q");options.add("Q");options.add("s");options.add("S");
+    options.add("1");options.add("2");options.add("3");options.add("4");options.add("q");options.add("Q");options.add("s");options.add("S");
     int i = 0;
     while (i == 0)
     {
       int j = 0;
-      System.out.println("Which action to take next?\n1: assign a game to a match\n2: enter a match result\n3: write current state to html file\nq: quit");
+      System.out.println("Which action to take next?\n1: assign a game to a match\n2: enter a match result\n3: write current state to html file\n4: generate PDF scoresheets\nq: quit");
       Prompter p = ConsoleKeyPressPrompter.prompt(null, options);
       while (!p.isDone()) {}
 
@@ -297,7 +298,7 @@ public class Tournament
           System.exit(0);
         }
         if ((p.get() == "s") || (p.get() == "S")) {
-          j = 4;
+          j = 5;
         } else {
           j = new Integer("" + p.get()).intValue();
         }
@@ -321,6 +322,9 @@ public class Tournament
         if (j == 3) {
           doWriteHTMLFile();
         }
+        if (j == 4) {
+          doGeneratePDFFile();
+        }
       }
       catch (SQLException e)
       {
@@ -333,6 +337,27 @@ public class Tournament
       }
     }
   }
+
+
+  public void doGeneratePDFFile()
+  {
+	  //first get the list of match numbers
+	  Map<String, List<String>> matchList = new TreeMap<String, List<String>>();
+	  List<String> matchNumList = loadMatchNumberListFromDatabase();
+
+	  //then iterate over that list to get the map of match numbers to involved players
+	  try
+	  {
+	      for (String match : matchNumList)
+	      {   matchList.put(match, getPlayerNamesInMatch(Integer.parseInt(match)));    }
+	  //send this mapping to the PDF creator
+	      CompetitionPDFCreator.generatePDF(matchList);
+	  }
+	  catch (SQLException e)
+	  {	e.printStackTrace();    }
+
+  }
+
 
   public void doAssignAGameToAMatch()
   {
@@ -460,24 +485,39 @@ public class Tournament
     return sb.toString();
   }
 
+
+  private List<String> getPlayerNamesInMatch(int matchNum) throws SQLException
+  {
+	  LinkedList<String> playerList = new LinkedList<String>();
+
+	  ResultSet playerNamesInMatch = this.stmt.executeQuery("CALL getPlayerNamesInMatch(" + matchNum + ")");
+	  while (playerNamesInMatch.next()) {
+	      playerList.add(playerNamesInMatch.getString("name"));
+	  }
+
+	  return playerList;
+  }
+
+
+
   public void doEnterMatchResult()
     throws SQLException, Exception
   {
     System.out.print("Enter Match #: ");
 
     String str1 = "";
-    Iterator<String> localIterator = loadMatchNumberListFromDatabase().iterator();
-    while (localIterator.hasNext()) {
-      str1 = str1 + "|" + localIterator.next();
+    Iterator<String> it = loadMatchNumberListFromDatabase().iterator();
+    while (it.hasNext()) {
+      str1 = str1 + "|" + it.next();
     }
-    Prompter localPrompter1; for (localPrompter1 = CommandLinePrompter.prompt("Enter Match #: ", str1); !localPrompter1.isDone();) {}
+    Prompter p1; for (p1 = CommandLinePrompter.prompt("Enter Match #: ", str1); !p1.isDone();) {}
     int i;
     try
     {
-      if (localPrompter1.get().equals("")) {
+      if (p1.get().equals("")) {
         return;
       }
-      i = Integer.parseInt(localPrompter1.get());
+      i = Integer.parseInt(p1.get());
     }
     catch (InterruptedException e)
     {
@@ -492,15 +532,13 @@ public class Tournament
       System.out.println("Match #" + i + " not found.");
       return;
     }
-    LinkedList<String> playerList = new LinkedList<String>();
+
     String[] playerArray = new String[0];
     LinkedList<Long> scoreList = new LinkedList<Long>();
     Long[] scoreArray = new Long[0];
 
-    ResultSet localResultSet1 = this.stmt.executeQuery("CALL getPlayerNamesInMatch(" + i + ")");
-    while (localResultSet1.next()) {
-      playerList.add(localResultSet1.getString("name"));
-    }
+    List<String> playerList = getPlayerNamesInMatch(i);
+
     for (Iterator<String> iter = playerList.iterator(); iter.hasNext();)
     {
       String play = iter.next();
