@@ -67,7 +67,6 @@ CREATE TABLE tblbonusscoring (
   PRIMARY KEY (_key),
   FOREIGN KEY (_fk_scoring) REFERENCES tblscoring(_key));
      
- 
 CREATE TABLE tblwebsitegenerator (
   _key smallint(6) NOT NULL AUTO_INCREMENT,
   _fk_competition smallint(6) DEFAULT NULL,
@@ -76,7 +75,6 @@ CREATE TABLE tblwebsitegenerator (
   PRIMARY KEY (_key),
   FOREIGN KEY (_fk_competition) REFERENCES tblcompetition (_key));
   
-
 CREATE TABLE tblcompetitionenrollment (
   _key smallint(6) NOT NULL AUTO_INCREMENT,
   _fk_competition smallint(6) NOT NULL,
@@ -88,6 +86,29 @@ CREATE TABLE tblcompetitionenrollment (
   FOREIGN KEY (_fk_competition) REFERENCES tblcompetition(_key),
   FOREIGN KEY (_fk_player) REFERENCES tblplayer(_key));
   
+CREATE TABLE tblcompetitionadvancementscript (
+  _key smallint(6) NOT NULL AUTO_INCREMENT,
+  _fk_competition smallint(6) NOT NULL,
+  step int(6) NOT NULL,
+  command varchar(10000) DEFAULT NULL,
+  active tinyint(1),
+  PRIMARY KEY (_key),
+  UNIQUE KEY (_fk_competition, step),
+  FOREIGN KEY (_fk_competition) REFERENCES tblcompetition(_key));
+
+CREATE TABLE tblvariablename
+  _key smallint(6) NOT NULL AUTO_INCREMENT,
+  varname varchar(40),
+  PRIMARY KEY (_key));
+  
+CREATE TABLE tblvariablevalue
+  _key smallint(6) NOT NULL AUTO_INCREMENT,
+  _fk_variabledef smallint(6),
+  varvalue varchar(40),
+  startdate DATETIME,
+  enddate DATETIME,
+  PRIMARY KEY (_key),
+  FOREIGN KEY (_fk_variablename) REFERENCES tblvariablename(_key))); 
   
 CREATE TABLE tempScore (
   _key smallint(6) NOT NULL,
