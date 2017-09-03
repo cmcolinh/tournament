@@ -299,19 +299,6 @@ BEGIN
 END//
 
 
-CREATE PROCEDURE addPlayer(
- IN playerName VARCHAR(40))
-BEGIN
-  
- IF (playerNameExists(playerName) = 0)
- THEN
- INSERT INTO tblplayer(name, report)
- SELECT playerName, 1;
- END IF;
- 
-END//
-
-
 CREATE PROCEDURE enrollPlayerToCompetition(
   IN playerName VARCHAR(40),
   IN competitionNum int(6),

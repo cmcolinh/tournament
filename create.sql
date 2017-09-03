@@ -2,13 +2,15 @@ CREATE TABLE tblcompetition (
   _key smallint(6) NOT NULL AUTO_INCREMENT,
   name varchar(100) DEFAULT NULL,
   basepath varchar(100) DEFAULT NULL,
-  PRIMARY KEY (_key));
+  PRIMARY KEY (_key),
+  UNIQUE KEY (name));
   
 CREATE TABLE tblgame (
   _key smallint(6) NOT NULL AUTO_INCREMENT,
   gamename varchar(40) DEFAULT NULL,
   ones tinyint(4) DEFAULT NULL,
-  PRIMARY KEY (_key));
+  PRIMARY KEY (_key),
+  UNIQUE KEY (gamename));
   
 CREATE TABLE tblscoringscheme (
   _key smallint(6) NOT NULL AUTO_INCREMENT,
@@ -27,7 +29,8 @@ CREATE TABLE tblplayer (
   _key smallint(6) NOT NULL AUTO_INCREMENT,
   name varchar(40) DEFAULT NULL,
   report int(11) DEFAULT NULL,
-  PRIMARY KEY (_key));
+  PRIMARY KEY (_key),
+  UNIQUE KEY (_key));
   
 CREATE TABLE tblscoreset (
   _key smallint(6) NOT NULL AUTO_INCREMENT,
@@ -96,19 +99,27 @@ CREATE TABLE tblcompetitionadvancementscript (
   UNIQUE KEY (_fk_competition, step),
   FOREIGN KEY (_fk_competition) REFERENCES tblcompetition(_key));
 
-CREATE TABLE tblvariablename
+CREATE TABLE tblattributename(
   _key smallint(6) NOT NULL AUTO_INCREMENT,
-  varname varchar(40),
-  PRIMARY KEY (_key));
-  
-CREATE TABLE tblvariablevalue
-  _key smallint(6) NOT NULL AUTO_INCREMENT,
-  _fk_variabledef smallint(6),
-  varvalue varchar(40),
-  startdate DATETIME,
-  enddate DATETIME,
+  varname varchar(40) NOT NULL,
+  description varchar(40) NOT NULL,
   PRIMARY KEY (_key),
-  FOREIGN KEY (_fk_variablename) REFERENCES tblvariablename(_key))); 
+  UNIQUE KEY (varname));
+  
+CREATE TABLE tblattributevalue(
+  _key smallint(6) NOT NULL AUTO_INCREMENT,
+  _fk_player smallint (6) DEFAULT NULL,
+  _fk_game smallint(6) DEFAULT NULL,
+  _fk_competition smallint(6) DEFAULT NULL,
+  _fk_attributename smallint(6) NOT NULL,
+  attrvalue varchar(40) NOT NULL,
+  startdate DATETIME NOT NULL,
+  enddate DATETIME DEFAULT NULL,
+  PRIMARY KEY (_key),
+  FOREIGN KEY (_fk_attributename) REFERENCES tblattributename(_key),
+  FOREIGN KEY (_fk_player) REFERENCES tblplayer(_key),
+  FOREIGN KEY (_fk_game) REFERENCES tblgame(_key),
+  FOREIGN KEY (_fk_competition) REFERENCES tblcompetition(_key)); 
   
 CREATE TABLE tempScore (
   _key smallint(6) NOT NULL,
@@ -122,4 +133,20 @@ CREATE TABLE tempScore (
   PRIMARY KEY (_key, session_id),
   FOREIGN KEY (_fk_player) REFERENCES tblplayer (_key),
   FOREIGN KEY (_fk_match) REFERENCES tblmatch (_key),
-  FOREIGN KEY (_fk_scoreset) REFERENCES tblscoreset (_key));  
+  FOREIGN KEY (_fk_scoreset) REFERENCES tblscoreset (_key));
+  
+ CREATE TABLE tempattributevalue(
+  _key smallint(6) NOT NULL AUTO_INCREMENT,
+  _fk_player smallint (6) DEFAULT NULL,
+  _fk_game smallint(6) DEFAULT NULL,
+  _fk_competition smallint(6) DEFAULT NULL,
+  _fk_attributename smallint(6) NOT NULL,
+  attrvalue varchar(40) NOT NULL,
+  startdate DATETIME NOT NULL,
+  enddate DATETIME DEFAULT NULL,
+  session_id int(4) NOT NULL,
+  PRIMARY KEY (_key),
+  FOREIGN KEY (_fk_attributename) REFERENCES tblattributename(_key),
+  FOREIGN KEY (_fk_player) REFERENCES tblplayer(_key),
+  FOREIGN KEY (_fk_game) REFERENCES tblgame(_key),
+  FOREIGN KEY (_fk_competition) REFERENCES tblcompetition(_key)); 
