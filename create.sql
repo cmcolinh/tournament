@@ -103,8 +103,12 @@ CREATE TABLE tblattributename(
   _key smallint(6) NOT NULL AUTO_INCREMENT,
   varname varchar(40) NOT NULL,
   description varchar(40) NOT NULL,
+  playernotnull tinyint(1) NOT NULL DEFAULT 0,
+  gamenotnull tinyint(1) NOT NULL DEFAULT 0,
+  competitionnotnull tinyint(1) NOT NULL DEFAULT 0,
+  regex VARCHAR(100) NOT NULL DEFAULT '.{1,40}';
   PRIMARY KEY (_key),
-  UNIQUE KEY (varname));
+  UNIQUE KEY (varname, playernotnull, gamenotnull, competitionnotnull));
   
 CREATE TABLE tblattributevalue(
   _key smallint(6) NOT NULL AUTO_INCREMENT,
@@ -136,7 +140,6 @@ CREATE TABLE tempScore (
   FOREIGN KEY (_fk_scoreset) REFERENCES tblscoreset (_key));
   
  CREATE TABLE tempattributevalue(
-  _key smallint(6) NOT NULL AUTO_INCREMENT,
   _fk_player smallint (6) DEFAULT NULL,
   _fk_game smallint(6) DEFAULT NULL,
   _fk_competition smallint(6) DEFAULT NULL,
@@ -145,7 +148,6 @@ CREATE TABLE tempScore (
   startdate DATETIME NOT NULL,
   enddate DATETIME DEFAULT NULL,
   session_id int(4) NOT NULL,
-  PRIMARY KEY (_key),
   FOREIGN KEY (_fk_attributename) REFERENCES tblattributename(_key),
   FOREIGN KEY (_fk_player) REFERENCES tblplayer(_key),
   FOREIGN KEY (_fk_game) REFERENCES tblgame(_key),

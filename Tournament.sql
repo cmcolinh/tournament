@@ -286,19 +286,6 @@ BEGIN
 END//
 
 
-CREATE PROCEDURE addGame(
- IN name VARCHAR(40))
-BEGIN
- 
- IF (gameNameExists(name) = 0)
- THEN
- INSERT INTO tblgame(gamename, ones)
- SELECT name, 1;
- END IF;
- 
-END//
-
-
 CREATE PROCEDURE enrollPlayerToCompetition(
   IN playerName VARCHAR(40),
   IN competitionNum int(6),
@@ -383,16 +370,6 @@ BEGIN
  
 
 END//
-
-
-CREATE PROCEDURE getGameNamesInCompetition(
- IN competitionNumber smallint)
-BEGIN
- 
- SELECT gamename from tblgame;
-
-END//
-
 
 
 CREATE PROCEDURE getMatchNumbersInCompetition(

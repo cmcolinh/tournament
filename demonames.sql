@@ -1,4 +1,6 @@
-insert into tblattributename(varname, description) values ('playerName', 'Name of Player');
+insert into tblattributename(varname, description, playernotnull) values ('playerName', 'Name of Player', 1);
+insert into tblattributename(varname, description, gamenotnull) values ('gameName', 'Name of Game', 1);
+insert into tblattributename(varname, description, competitionnotnull) values ('gameInCompetition', 'Game is being used in the competition', 1);
 
 call addPlayer('Colin');
 call addPlayer('David');
