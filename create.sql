@@ -101,14 +101,14 @@ CREATE TABLE tblcompetitionadvancementscript (
 
 CREATE TABLE tblattributename(
   _key smallint(6) NOT NULL AUTO_INCREMENT,
-  varname varchar(40) NOT NULL,
+  attrname varchar(40) NOT NULL,
   description varchar(40) NOT NULL,
   playernotnull tinyint(1) NOT NULL DEFAULT 0,
   gamenotnull tinyint(1) NOT NULL DEFAULT 0,
   competitionnotnull tinyint(1) NOT NULL DEFAULT 0,
-  regex VARCHAR(100) NOT NULL DEFAULT '.{1,40}';
+  regex VARCHAR(100) NOT NULL DEFAULT '.{1,40}',
   PRIMARY KEY (_key),
-  UNIQUE KEY (varname, playernotnull, gamenotnull, competitionnotnull));
+  UNIQUE KEY (attrname, playernotnull, gamenotnull, competitionnotnull));
   
 CREATE TABLE tblattributevalue(
   _key smallint(6) NOT NULL AUTO_INCREMENT,
