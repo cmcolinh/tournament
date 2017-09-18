@@ -230,7 +230,7 @@ BEGIN
 END//
 
 
-CREATE DEFINER=`root`@`localhost` FUNCTION `getNewByePlayer`() RETURNS int(11)
+CREATE FUNCTION getNewByePlayer() RETURNS int(11)
 BEGIN
 
  INSERT INTO tblplayer(name, report)
@@ -434,13 +434,7 @@ BEGIN
 END//
 
 
-CREATE PROCEDURE removePlayer(
- IN playerName VARCHAR(40))
-BEGIN
- 
- DELETE FROM tblplayer WHERE name = playerName;
- 
-END// 
+
 
 
 DELIMITER ;

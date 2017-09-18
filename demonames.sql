@@ -1,4 +1,5 @@
 insert into tblattributename(attrname, description, playernotnull) values ('playerName', 'Name of Player', 1);
+insert into tblattributename(attrname, description, playernotnull, regex) values ('playerActive', 'Player active in database', 1, 'Y|N');
 insert into tblattributename(attrname, description, gamenotnull) values ('gameName', 'Name of Game', 1);
 insert into tblattributename(attrname, description, competitionnotnull, regex) values ('gameInCompetition', 'Game is being used in the competition', 1, 'Y|N');
 

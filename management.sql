@@ -8,9 +8,22 @@ BEGIN
  THEN
  INSERT INTO tblplayer(name, report)
  SELECT playerName, 1;
+ ELSE
+ UPDATE tblplayer SET report = 1 WHERE NAME = playerName;
  END IF;
  
+ 
 END//
+
+
+CREATE PROCEDURE removePlayer(
+ IN playerName VARCHAR(40))
+BEGIN
+ 
+ UPDATE tblplayer SET report = 0 WHERE name = playerName;
+ 
+END// 
+
 
 CREATE PROCEDURE addGame(
  IN name VARCHAR(40))
@@ -37,16 +50,40 @@ CREATE TRIGGER forNewPlayers AFTER INSERT ON tblplayer
  BEGIN
  INSERT INTO tempattributevalue (_fk_player, _fk_attributename, attrvalue, startdate, enddate, session_id)
  VALUES (NEW._key, (SELECT _key FROM tblattributename WHERE attrname = 'playerName' AND playernotnull = 1 AND gamenotnull = 0 AND competitionnotnull = 0), NEW.name, CONVERT_TZ(NOW(), @@session.time_zone, '+00:00'), NULL, connection_id());
+ INSERT INTO tempattributevalue (_fk_player, _fk_attributename, attrvalue, startdate, enddate, session_id)
+ VALUES (NEW._key, (SELECT _key FROM tblattributename WHERE attrname = 'playerActive' AND playernotnull = 1 AND gamenotnull = 0 AND competitionnotnull = 0), CASE NEW.report WHEN 1 THEN 'Y' ELSE 'N' END, CONVERT_TZ(NOW(), @@session.time_zone, '+00:00'), NULL, connection_id()); 
+ 
+ DELETE FROM tempattributevalue WHERE session_id = connection_id();
+ END;//
+
+CREATE TRIGGER forAlteredPlayers BEFORE UPDATE ON tblplayer
+ FOR EACH ROW
+ BEGIN
+ INSERT INTO tempattributevalue (_fk_player, _fk_attributename, attrvalue, startdate, enddate, session_id)
+ VALUES (NEW._key, (SELECT _key FROM tblattributename WHERE attrname = 'playerName' AND playernotnull = 1 AND gamenotnull = 0 AND competitionnotnull = 0), NEW.name, CONVERT_TZ(NOW(), @@session.time_zone, '+00:00'), NULL, connection_id());
+ INSERT INTO tempattributevalue (_fk_player, _fk_attributename, attrvalue, startdate, enddate, session_id)
+ VALUES (NEW._key, (SELECT _key FROM tblattributename WHERE attrname = 'playerActive' AND playernotnull = 1 AND gamenotnull = 0 AND competitionnotnull = 0), CASE NEW.report WHEN 1 THEN 'Y' ELSE 'N' END, CONVERT_TZ(NOW(), @@session.time_zone, '+00:00'), NULL, connection_id());  
  DELETE FROM tempattributevalue WHERE session_id = connection_id();
  END;//
  
-CREATE TRIGGER forNewGames AFTER INSERT ON tblgame
+ 
+CREATE TRIGGER forNewGames BEFORE INSERT ON tblgame
  FOR EACH ROW 
  BEGIN
  INSERT INTO tempattributevalue (_fk_game, _fk_attributename, attrvalue, startdate, enddate, session_id)
  VALUES (NEW._key, (SELECT _key FROM tblattributename WHERE attrname = 'gameName' AND playernotnull = 0 AND gamenotnull = 1 AND competitionnotnull = 0), NEW.gamename, CONVERT_TZ(NOW(), @@session.time_zone, '+00:00'), NULL, connection_id());
  DELETE FROM tempattributevalue WHERE session_id = connection_id();
  END;//
+ 
+CREATE TRIGGER forAlteredGames BEFORE UPDATE ON tblgame
+ FOR EACH ROW 
+ BEGIN
+ INSERT INTO tempattributevalue (_fk_game, _fk_attributename, attrvalue, startdate, enddate, session_id)
+ VALUES (NEW._key, (SELECT _key FROM tblattributename WHERE attrname = 'gameName' AND playernotnull = 0 AND gamenotnull = 1 AND competitionnotnull = 0), NEW.gamename, CONVERT_TZ(NOW(), @@session.time_zone, '+00:00'), NULL, connection_id());
+ DELETE FROM tempattributevalue WHERE session_id = connection_id();
+ END;//
+
+
 
  CREATE TRIGGER updateAttributeValues AFTER INSERT ON tempattributevalue
  FOR EACH ROW
